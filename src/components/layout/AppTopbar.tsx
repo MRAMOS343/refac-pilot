@@ -1,0 +1,156 @@
+import { Search, Moon, Sun, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { Warehouse, User } from "../../types";
+
+interface AppTopbarProps {
+  breadcrumbs: Array<{ label: string; href?: string }>;
+  warehouses: Warehouse[];
+  currentWarehouse: string;
+  onWarehouseChange: (warehouseId: string) => void;
+  currentUser: User | null;
+  onRoleChange: (role: 'admin' | 'gerente' | 'cajero') => void;
+  onSearch: (query: string) => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
+}
+
+export function AppTopbar({
+  breadcrumbs,
+  warehouses,
+  currentWarehouse,
+  onWarehouseChange,
+  currentUser,
+  onRoleChange,
+  onSearch,
+  isDarkMode,
+  onToggleDarkMode,
+}: AppTopbarProps) {
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'admin': return 'default';
+      case 'gerente': return 'secondary';
+      case 'cajero': return 'outline';
+      default: return 'outline';
+    }
+  };
+
+  return (
+    <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="flex h-full items-center gap-4 px-4">
+        {/* Sidebar Toggle */}
+        <SidebarTrigger className="flex-shrink-0" />
+
+        {/* Breadcrumbs */}
+        <div className="flex-1 min-w-0">
+          <Breadcrumb>
+            <BreadcrumbList>
+              {breadcrumbs.map((crumb, index) => (
+                <div key={index} className="flex items-center">
+                  {index > 0 && <BreadcrumbSeparator />}
+                  <BreadcrumbItem>
+                    {crumb.href && index < breadcrumbs.length - 1 ? (
+                      <BreadcrumbLink href={crumb.href}>
+                        {crumb.label}
+                      </BreadcrumbLink>
+                    ) : (
+                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    )}
+                  </BreadcrumbItem>
+                </div>
+              ))}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-shrink-0 w-80 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar productos, SKU... (Ctrl+/)"
+            className="pl-10"
+            onChange={(e) => onSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                e.currentTarget.focus();
+              }
+            }}
+          />
+        </div>
+
+        {/* Warehouse Selector */}
+        <Select value={currentWarehouse} onValueChange={onWarehouseChange}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Sucursal" />
+          </SelectTrigger>
+          <SelectContent>
+            {warehouses.map((warehouse) => (
+              <SelectItem key={warehouse.id} value={warehouse.id}>
+                {warehouse.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Role Simulator */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rol:</span>
+          <Select 
+            value={currentUser?.role || 'cajero'} 
+            onValueChange={onRoleChange}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="gerente">Gerente</SelectItem>
+              <SelectItem value="cajero">Cajero</SelectItem>
+            </SelectContent>
+          </Select>
+          <Badge variant={getRoleBadgeVariant(currentUser?.role || 'cajero')}>
+            {currentUser?.role || 'cajero'}
+          </Badge>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleDarkMode}
+            aria-label="Toggle dark mode"
+          >
+            {isDarkMode ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
+
+          <Button variant="ghost" size="icon" aria-label="Notifications">
+            <Bell className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
