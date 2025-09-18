@@ -32,14 +32,12 @@ export function LoginForm({
   return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto bg-primary rounded-2xl flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center bg-red-600">
             <Package className="w-8 h-8 text-primary-foreground" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Moncar</CardTitle>
-            <CardDescription>
-              Sistema de gestión para refaccionaria
-            </CardDescription>
+            <CardDescription>v4.5</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -57,7 +55,7 @@ export function LoginForm({
                 <AlertDescription>{error}</AlertDescription>
               </Alert>}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="w-full bg-red-600 hover:bg-red-500">
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Iniciar Sesión
             </Button>
