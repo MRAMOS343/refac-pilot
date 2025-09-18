@@ -12,15 +12,17 @@ import { Download, Upload, AlertTriangle, Package, TrendingDown } from 'lucide-r
 import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
 import { Product, Inventory, User, KPIData } from '../types';
 import { toast } from '@/hooks/use-toast';
-
 interface ContextType {
   currentWarehouse: string;
   searchQuery: string;
   currentUser: User;
 }
-
 export default function InventarioPage() {
-  const { currentWarehouse, searchQuery, currentUser } = useOutletContext<ContextType>();
+  const {
+    currentWarehouse,
+    searchQuery,
+    currentUser
+  } = useOutletContext<ContextType>();
   const [selectedMarca, setSelectedMarca] = useState<string>('all');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('all');
   const [sortField, setSortField] = useState<string>('nombre');
@@ -32,115 +34,92 @@ export default function InventarioPage() {
 
   // Filter and sort inventory data
   const filteredInventory = useMemo(() => {
-    return mockInventory
-      .filter(inv => inv.warehouseId === currentWarehouse)
-      .map(inv => {
-        const product = getProductById(inv.productId);
-        return { ...inv, product };
-      })
-      .filter(item => {
-        if (!item.product) return false;
-        
-        // Search filter
-        if (searchQuery) {
-          const searchLower = searchQuery.toLowerCase();
-          if (!item.product.nombre.toLowerCase().includes(searchLower) &&
-              !item.product.sku.toLowerCase().includes(searchLower) &&
-              !item.product.marca.toLowerCase().includes(searchLower)) {
-            return false;
-          }
+    return mockInventory.filter(inv => inv.warehouseId === currentWarehouse).map(inv => {
+      const product = getProductById(inv.productId);
+      return {
+        ...inv,
+        product
+      };
+    }).filter(item => {
+      if (!item.product) return false;
+
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        if (!item.product.nombre.toLowerCase().includes(searchLower) && !item.product.sku.toLowerCase().includes(searchLower) && !item.product.marca.toLowerCase().includes(searchLower)) {
+          return false;
         }
-        
-        // Brand filter
-        if (selectedMarca && selectedMarca !== 'all' && item.product.marca !== selectedMarca) return false;
-        
-        // Category filter
-        if (selectedCategoria && selectedCategoria !== 'all' && item.product.categoria !== selectedCategoria) return false;
-        
-        return true;
-      })
-      .sort((a, b) => {
-        if (!a.product || !b.product) return 0;
-        
-        let aValue: any = a.product[sortField as keyof Product] || a[sortField as keyof Inventory];
-        let bValue: any = b.product[sortField as keyof Product] || b[sortField as keyof Inventory];
-        
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          aValue = aValue.toLowerCase();
-          bValue = bValue.toLowerCase();
-        }
-        
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
+      }
+
+      // Brand filter
+      if (selectedMarca && selectedMarca !== 'all' && item.product.marca !== selectedMarca) return false;
+
+      // Category filter
+      if (selectedCategoria && selectedCategoria !== 'all' && item.product.categoria !== selectedCategoria) return false;
+      return true;
+    }).sort((a, b) => {
+      if (!a.product || !b.product) return 0;
+      let aValue: any = a.product[sortField as keyof Product] || a[sortField as keyof Inventory];
+      let bValue: any = b.product[sortField as keyof Product] || b[sortField as keyof Inventory];
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
   }, [currentWarehouse, searchQuery, selectedMarca, selectedCategoria, sortField, sortDirection]);
 
   // Calculate KPIs for current warehouse
   const kpis: KPIData[] = useMemo(() => {
     const warehouseInventory = mockInventory.filter(inv => inv.warehouseId === currentWarehouse);
-    
     const lowStockItems = warehouseInventory.filter(inv => {
       const product = getProductById(inv.productId);
       return product && inv.onHand <= product.reorderPoint;
     }).length;
-
     const totalItems = warehouseInventory.reduce((sum, inv) => sum + inv.onHand, 0);
 
     // Mock rotation calculation
     const avgRotation = 2.3;
-
-    return [
-      {
-        label: 'Ítems en Bajo Stock',
-        value: lowStockItems,
-        changeType: lowStockItems > 5 ? 'negative' : 'positive',
-        change: -12.5,
-        format: 'number'
-      },
-      {
-        label: 'Stock Total',
-        value: totalItems,
-        changeType: 'positive',
-        change: 8.2,
-        format: 'number'
-      },
-      {
-        label: 'Rotación Promedio',
-        value: avgRotation,
-        changeType: 'positive',
-        change: 5.1,
-        format: 'number'
-      }
-    ];
+    return [{
+      label: 'Ítems en Bajo Stock',
+      value: lowStockItems,
+      changeType: lowStockItems > 5 ? 'negative' : 'positive',
+      change: -12.5,
+      format: 'number'
+    }, {
+      label: 'Stock Total',
+      value: totalItems,
+      changeType: 'positive',
+      change: 8.2,
+      format: 'number'
+    }, {
+      label: 'Rotación Promedio',
+      value: avgRotation,
+      changeType: 'positive',
+      change: 5.1,
+      format: 'number'
+    }];
   }, [currentWarehouse]);
 
   // Calculate global totals across all warehouses
   const globalTotals = useMemo(() => {
     const allInventory = mockInventory.map(inv => {
       const product = getProductById(inv.productId);
-      return { ...inv, product };
+      return {
+        ...inv,
+        product
+      };
     }).filter(item => item.product);
-
-    const totalStockValue = allInventory.reduce((sum, inv) => 
-      sum + (inv.onHand * inv.product!.precio), 0
-    );
-
+    const totalStockValue = allInventory.reduce((sum, inv) => sum + inv.onHand * inv.product!.precio, 0);
     const totalProducts = new Set(allInventory.map(inv => inv.productId)).size;
-    
     const totalItems = allInventory.reduce((sum, inv) => sum + inv.onHand, 0);
-
-    const globalLowStock = allInventory.filter(inv => 
-      inv.onHand <= inv.product!.reorderPoint
-    ).length;
-
+    const globalLowStock = allInventory.filter(inv => inv.onHand <= inv.product!.reorderPoint).length;
     const warehouseBreakdown = mockWarehouses.map(warehouse => {
       const warehouseInv = allInventory.filter(inv => inv.warehouseId === warehouse.id);
       const warehouseTotal = warehouseInv.reduce((sum, inv) => sum + inv.onHand, 0);
-      const warehouseValue = warehouseInv.reduce((sum, inv) => 
-        sum + (inv.onHand * inv.product!.precio), 0
-      );
-      
+      const warehouseValue = warehouseInv.reduce((sum, inv) => sum + inv.onHand * inv.product!.precio, 0);
       return {
         warehouse: warehouse.nombre,
         totalItems: warehouseTotal,
@@ -148,7 +127,6 @@ export default function InventarioPage() {
         uniqueProducts: new Set(warehouseInv.map(inv => inv.productId)).size
       };
     });
-
     return {
       totalStockValue,
       totalProducts,
@@ -157,7 +135,6 @@ export default function InventarioPage() {
       warehouseBreakdown
     };
   }, []);
-
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -166,15 +143,13 @@ export default function InventarioPage() {
       setSortDirection('asc');
     }
   };
-
   const handleExportCSV = () => {
     toast({
       title: "Exportación iniciada",
-      description: "Generando archivo CSV...",
+      description: "Generando archivo CSV..."
     });
     // Mock export functionality
   };
-
   const handleImportCSV = () => {
     if (currentUser.role === 'cajero') {
       toast({
@@ -184,16 +159,15 @@ export default function InventarioPage() {
       });
       return;
     }
-    
     toast({
       title: "Función disponible próximamente",
-      description: "La importación de CSV será implementada en la siguiente versión.",
+      description: "La importación de CSV será implementada en la siguiente versión."
     });
   };
-
-  const getStockStatusBadge = (inv: Inventory & { product?: Product }) => {
+  const getStockStatusBadge = (inv: Inventory & {
+    product?: Product;
+  }) => {
     if (!inv.product) return <Badge variant="outline">Sin datos</Badge>;
-    
     if (inv.onHand <= 0) {
       return <Badge variant="destructive">Sin stock</Badge>;
     } else if (inv.onHand <= inv.product.reorderPoint) {
@@ -204,9 +178,7 @@ export default function InventarioPage() {
       return <Badge variant="default">Stock alto</Badge>;
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -220,12 +192,7 @@ export default function InventarioPage() {
             <Download className="w-4 h-4 mr-2" />
             Exportar CSV
           </Button>
-          <Button 
-            onClick={handleImportCSV} 
-            variant="outline" 
-            size="sm"
-            disabled={currentUser.role === 'cajero'}
-          >
+          <Button onClick={handleImportCSV} variant="outline" size="sm" disabled={currentUser.role === 'cajero'}>
             <Upload className="w-4 h-4 mr-2" />
             Importar CSV
           </Button>
@@ -242,9 +209,7 @@ export default function InventarioPage() {
         <TabsContent value="warehouse" className="space-y-6">
           {/* KPIs for current warehouse */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {kpis.map((kpi, index) => (
-              <KPICard key={index} data={kpi} />
-            ))}
+            {kpis.map((kpi, index) => <KPICard key={index} data={kpi} />)}
           </div>
         </TabsContent>
 
@@ -252,33 +217,33 @@ export default function InventarioPage() {
           {/* Global KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <KPICard data={{
-              label: 'Valor Total Inventario',
-              value: globalTotals.totalStockValue,
-              changeType: 'positive',
-              change: 15.3,
-              format: 'currency'
-            }} />
+            label: 'Valor Total Inventario',
+            value: globalTotals.totalStockValue,
+            changeType: 'positive',
+            change: 15.3,
+            format: 'currency'
+          }} />
             <KPICard data={{
-              label: 'Productos Únicos',
-              value: globalTotals.totalProducts,
-              changeType: 'neutral',
-              change: 0,
-              format: 'number'
-            }} />
+            label: 'Productos Únicos',
+            value: globalTotals.totalProducts,
+            changeType: 'neutral',
+            change: 0,
+            format: 'number'
+          }} />
             <KPICard data={{
-              label: 'Items Totales',
-              value: globalTotals.totalItems,
-              changeType: 'positive',
-              change: 8.7,
-              format: 'number'
-            }} />
+            label: 'Items Totales',
+            value: globalTotals.totalItems,
+            changeType: 'positive',
+            change: 8.7,
+            format: 'number'
+          }} />
             <KPICard data={{
-              label: 'Bajo Stock Global',
-              value: globalTotals.globalLowStock,
-              changeType: globalTotals.globalLowStock > 15 ? 'negative' : 'positive',
-              change: -5.2,
-              format: 'number'
-            }} />
+            label: 'Bajo Stock Global',
+            value: globalTotals.globalLowStock,
+            changeType: globalTotals.globalLowStock > 15 ? 'negative' : 'positive',
+            change: -5.2,
+            format: 'number'
+          }} />
           </div>
 
           {/* Warehouse Breakdown Table */}
@@ -300,14 +265,14 @@ export default function InventarioPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {globalTotals.warehouseBreakdown.map((warehouse, index) => (
-                    <TableRow key={index}>
+                  {globalTotals.warehouseBreakdown.map((warehouse, index) => <TableRow key={index}>
                       <TableCell className="font-medium">{warehouse.warehouse}</TableCell>
                       <TableCell className="text-right">{warehouse.totalItems.toLocaleString()}</TableCell>
                       <TableCell className="text-right">{warehouse.uniqueProducts}</TableCell>
-                      <TableCell className="text-right">${warehouse.totalValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</TableCell>
-                    </TableRow>
-                  ))}
+                      <TableCell className="text-right">${warehouse.totalValue.toLocaleString('es-MX', {
+                      minimumFractionDigits: 2
+                    })}</TableCell>
+                    </TableRow>)}
                 </TableBody>
               </Table>
             </CardContent>
@@ -335,9 +300,7 @@ export default function InventarioPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las marcas</SelectItem>
-                  {marcas.map(marca => (
-                    <SelectItem key={marca} value={marca}>{marca}</SelectItem>
-                  ))}
+                  {marcas.map(marca => <SelectItem key={marca} value={marca}>{marca}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -350,32 +313,21 @@ export default function InventarioPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las categorías</SelectItem>
-                  {categorias.map(categoria => (
-                    <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>
-                  ))}
+                  {categorias.map(categoria => <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar</label>
-              <Input 
-                placeholder="SKU, nombre o marca..." 
-                value={searchQuery}
-                readOnly
-                className="bg-muted"
-              />
+              <Input placeholder="SKU, nombre o marca..." value={searchQuery} readOnly className="bg-muted" />
             </div>
 
             <div className="flex items-end">
-              <Button 
-                onClick={() => {
+              <Button onClick={() => {
                   setSelectedMarca('all');
                   setSelectedCategoria('all');
-                }} 
-                variant="outline"
-                className="w-full"
-              >
+                }} variant="outline" className="w-full">
                 Limpiar filtros
               </Button>
             </div>
@@ -400,22 +352,11 @@ export default function InventarioPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('sku')}
-                  >
-                    SKU
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('nombre')}
-                  >
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('sku')}>Código</TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('nombre')}>
                     Producto
                   </TableHead>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('marca')}
-                  >
+                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('marca')}>
                     Marca
                   </TableHead>
                   <TableHead>Categoría</TableHead>
@@ -427,12 +368,10 @@ export default function InventarioPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInventory.map((inv) => {
-                  const product = inv.product!;
-                  const disponible = inv.onHand - inv.reserved;
-                  
-                  return (
-                    <TableRow key={`${inv.productId}-${inv.warehouseId}`} className="hover:bg-muted/50">
+                {filteredInventory.map(inv => {
+                    const product = inv.product!;
+                    const disponible = inv.onHand - inv.reserved;
+                    return <TableRow key={`${inv.productId}-${inv.warehouseId}`} className="hover:bg-muted/50">
                       <TableCell className="font-mono text-sm">{product.sku}</TableCell>
                       <TableCell>
                         <div>
@@ -463,9 +402,8 @@ export default function InventarioPage() {
                       <TableCell>
                         {getStockStatusBadge(inv)}
                       </TableCell>
-                    </TableRow>
-                  );
-                })}
+                    </TableRow>;
+                  })}
               </TableBody>
             </Table>
           </div>
@@ -473,6 +411,5 @@ export default function InventarioPage() {
       </Card>
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    </div>;
 }
