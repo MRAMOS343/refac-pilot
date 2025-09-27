@@ -18,38 +18,38 @@ interface ContextType {
 export default function DashboardPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
 
-  // Global KPIs calculation
-  const globalKPIs = useMemo((): KPIData[] => {
-    const totalSales = mockSales.reduce((sum, sale) => sum + sale.total, 0);
-    const totalProducts = mockProducts.length;
-    const lowStockItems = mockInventory.filter(inv => inv.onHand <= 10).length;
-    const avgTicket = totalSales / mockSales.length;
+  // Cálculo de KPIs globales del negocio
+  const kpisGlobales = useMemo((): KPIData[] => {
+    const ventasTotales = mockSales.reduce((suma, venta) => suma + venta.total, 0);
+    const totalProductos = mockProducts.length;
+    const productosStockBajo = mockInventory.filter(inv => inv.onHand <= 10).length;
+    const ticketPromedio = ventasTotales / mockSales.length;
 
     return [
       {
         label: "Ventas Totales",
-        value: totalSales,
+        value: ventasTotales,
         format: "currency",
         change: 12.5,
         changeType: "positive"
       },
       {
         label: "Productos Únicos",
-        value: totalProducts,
+        value: totalProductos,
         format: "number",
         change: 2.1,
         changeType: "positive"
       },
       {
         label: "Ticket Promedio",
-        value: avgTicket,
+        value: ticketPromedio,
         format: "currency",
         change: -1.2,
         changeType: "negative"
       },
       {
         label: "Stock Bajo",
-        value: lowStockItems,
+        value: productosStockBajo,
         format: "number",
         change: 5.3,
         changeType: "negative"
@@ -57,66 +57,69 @@ export default function DashboardPage() {
     ];
   }, []);
 
-  // Sales trend data (last 7 days)
-  const salesTrendData = useMemo(() => {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      return date.toISOString().split('T')[0];
+  // Datos de tendencia de ventas (últimos 7 días) para el gráfico lineal
+  const datosTendenciaVentas = useMemo(() => {
+    const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
+      const fecha = new Date();
+      fecha.setDate(fecha.getDate() - (6 - i));
+      return fecha.toISOString().split('T')[0];
     });
 
-    return last7Days.map(date => {
-      const dayTotal = mockSales
-        .filter(sale => sale.fechaISO.startsWith(date))
-        .reduce((sum, sale) => sum + sale.total, 0);
+    return ultimos7Dias.map(fecha => {
+      // Sumar todas las ventas de ese día específico
+      const totalDia = mockSales
+        .filter(venta => venta.fechaISO.startsWith(fecha))
+        .reduce((suma, venta) => suma + venta.total, 0);
       
       return {
-        date: new Date(date).toLocaleDateString('es-MX', { weekday: 'short' }),
-        value: dayTotal
+        date: new Date(fecha).toLocaleDateString('es-MX', { weekday: 'short' }),
+        value: totalDia
       };
     });
   }, []);
 
-  // Payment methods distribution
-  const paymentMethodsData = useMemo(() => {
-    const methods = mockSales.reduce((acc, sale) => {
-      acc[sale.metodoPago] = (acc[sale.metodoPago] || 0) + 1;
-      return acc;
+  // Distribución de métodos de pago para gráfico circular
+  const datosMetodosPago = useMemo(() => {
+    const metodos = mockSales.reduce((acumulador, venta) => {
+      acumulador[venta.metodoPago] = (acumulador[venta.metodoPago] || 0) + 1;
+      return acumulador;
     }, {} as Record<string, number>);
 
-    return Object.entries(methods).map(([method, count]) => ({
-      name: method.charAt(0).toUpperCase() + method.slice(1),
-      value: count,
-      percentage: (count / mockSales.length * 100).toFixed(1)
+    return Object.entries(metodos).map(([metodo, cantidad]) => ({
+      name: metodo.charAt(0).toUpperCase() + metodo.slice(1),
+      value: cantidad,
+      percentage: (cantidad / mockSales.length * 100).toFixed(1)
     }));
   }, []);
 
-  // Top products by sales
-  const topProducts = useMemo(() => {
-    const productSales = mockSales.reduce((acc, sale) => {
-      sale.items.forEach(item => {
-        const product = mockProducts.find(p => p.id === item.productId);
-        if (product) {
-          if (!acc[product.id]) {
-            acc[product.id] = { product, totalSold: 0, revenue: 0 };
+  // Productos más vendidos por ingresos generados
+  const productosMasVendidos = useMemo(() => {
+    const ventasProductos = mockSales.reduce((acumulador, venta) => {
+      venta.items.forEach(item => {
+        const producto = mockProducts.find(p => p.id === item.productId);
+        if (producto) {
+          if (!acumulador[producto.id]) {
+            acumulador[producto.id] = { producto, totalVendido: 0, ingresos: 0 };
           }
-          acc[product.id].totalSold += item.qty;
-          acc[product.id].revenue += item.qty * item.unitPrice;
+          acumulador[producto.id].totalVendido += item.qty;
+          acumulador[producto.id].ingresos += item.qty * item.unitPrice;
         }
       });
-      return acc;
-    }, {} as Record<string, { product: any; totalSold: number; revenue: number }>);
+      return acumulador;
+    }, {} as Record<string, { producto: any; totalVendido: number; ingresos: number }>);
 
-    return Object.values(productSales)
-      .sort((a, b) => b.revenue - a.revenue)
+    // Ordenar por ingresos y tomar los top 5
+    return Object.values(ventasProductos)
+      .sort((a, b) => b.ingresos - a.ingresos)
       .slice(0, 5);
   }, []);
 
-  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+  // Colores para los gráficos - usar tokens del tema
+  const COLORES = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
+      {/* Encabezado de la página principal */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
@@ -136,16 +139,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* Indicadores clave de rendimiento (KPIs) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {globalKPIs.map((kpi, index) => (
+        {kpisGlobales.map((kpi, index) => (
           <KPICard key={index} data={kpi} />
         ))}
       </div>
 
-      {/* Charts Row */}
+      {/* Fila de gráficos principales */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales Trend */}
+        {/* Gráfico de tendencia de ventas */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -158,7 +161,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={salesTrendData}>
+              <LineChart data={datosTendenciaVentas}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-muted-foreground" />
                 <YAxis className="text-muted-foreground" />
@@ -185,7 +188,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Payment Methods */}
+        {/* Gráfico de métodos de pago */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -200,7 +203,7 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={paymentMethodsData}
+                  data={datosMetodosPago}
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
@@ -208,8 +211,8 @@ export default function DashboardPage() {
                   dataKey="value"
                   label={({ name, percentage }) => `${name} ${percentage}%`}
                 >
-                  {paymentMethodsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {datosMetodosPago.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORES[index % COLORES.length]} />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -225,9 +228,9 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Bottom Section */}
+      {/* Sección inferior con información adicional */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Products */}
+        {/* Productos más vendidos */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -240,22 +243,22 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topProducts.map((item, index) => (
-                <div key={item.product.id} className="flex items-center justify-between p-3 border rounded-lg">
+              {productosMasVendidos.map((item, index) => (
+                <div key={item.producto.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
                       {index + 1}
                     </div>
                     <div>
-                      <p className="font-medium">{item.product.nombre}</p>
-                      <p className="text-sm text-muted-foreground">{item.product.marca}</p>
+                      <p className="font-medium">{item.producto.nombre}</p>
+                      <p className="text-sm text-muted-foreground">{item.producto.marca}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">
-                      {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(item.revenue)}
+                      {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(item.ingresos)}
                     </p>
-                    <p className="text-sm text-muted-foreground">{item.totalSold} vendidos</p>
+                    <p className="text-sm text-muted-foreground">{item.totalVendido} vendidos</p>
                   </div>
                 </div>
               ))}
@@ -263,7 +266,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Alerts */}
+        {/* Sistema de alertas */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -276,15 +279,16 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
+              {/* Alerta de stock bajo - crítica */}
               <div className="flex items-center gap-3 p-3 border border-destructive/20 rounded-lg bg-destructive/5">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Stock Bajo</p>
                   <p className="text-xs text-muted-foreground">
-                    {globalKPIs[3].value} productos por debajo del punto de reorden
+                    {kpisGlobales[3].value} productos por debajo del punto de reorden
                   </p>
                 </div>
-                <Badge variant="destructive">Urgent</Badge>
+                <Badge variant="destructive">Urgente</Badge>
               </div>
               
               <div className="flex items-center gap-3 p-3 border border-yellow-200 rounded-lg bg-yellow-50 dark:bg-yellow-950/20">

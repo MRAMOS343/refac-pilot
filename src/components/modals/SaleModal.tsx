@@ -41,40 +41,43 @@ import { mockProducts } from "@/data/mockData";
 import { Product, SaleItem } from "@/types";
 import { Trash2, Plus, Search } from "lucide-react";
 
-const saleItemSchema = z.object({
+// Esquema de validación para cada producto en la venta
+const esquemaProductoVenta = z.object({
   productId: z.string().min(1, "Producto es requerido"),
   qty: z.number().min(1, "La cantidad debe ser mayor a 0"),
   unitPrice: z.number().min(0.01, "El precio debe ser mayor a 0"),
   discount: z.number().min(0, "El descuento no puede ser negativo").max(100, "El descuento no puede ser mayor a 100%").optional(),
 });
 
-const saleSchema = z.object({
+// Esquema principal de validación para la venta completa
+const esquemaVenta = z.object({
   metodoPago: z.enum(['efectivo', 'tarjeta', 'transferencia', 'credito'], {
     required_error: "Método de pago es requerido",
   }),
   cliente: z.string().max(100, "Nombre del cliente debe tener máximo 100 caracteres").optional(),
-  items: z.array(saleItemSchema).min(1, "Debe agregar al menos un producto"),
+  items: z.array(esquemaProductoVenta).min(1, "Debe agregar al menos un producto"),
 });
 
-type SaleFormData = z.infer<typeof saleSchema>;
+type DatosFormularioVenta = z.infer<typeof esquemaVenta>;
 
 interface SaleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   warehouseId: string;
-  onSave: (sale: SaleFormData) => void;
+  onSave: (sale: DatosFormularioVenta) => void;
 }
 
 export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModalProps) {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [items, setItems] = useState<SaleItem[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [productSearch, setProductSearch] = useState("");
+  const [enviandoFormulario, setEnviandoFormulario] = useState(false);
+  const [productos, setProductos] = useState<SaleItem[]>([]);
+  const [productoSeleccionadoId, setProductoSeleccionadoId] = useState("");
+  const [cantidad, setCantidad] = useState(1);
+  const [busquedaProducto, setBusquedaProducto] = useState("");
 
-  const form = useForm<SaleFormData>({
-    resolver: zodResolver(saleSchema),
+  // Configuración del formulario con validación
+  const formulario = useForm<DatosFormularioVenta>({
+    resolver: zodResolver(esquemaVenta),
     defaultValues: {
       metodoPago: 'efectivo',
       cliente: "",
@@ -82,46 +85,46 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     },
   });
 
-  // Filter products based on search
-  const filteredProducts = useMemo(() => {
-    return mockProducts.filter(product =>
-      product.nombre.toLowerCase().includes(productSearch.toLowerCase()) ||
-      product.sku.toLowerCase().includes(productSearch.toLowerCase()) ||
-      product.marca.toLowerCase().includes(productSearch.toLowerCase())
+  // Filtrar productos basado en la búsqueda
+  const productosFiltrados = useMemo(() => {
+    return mockProducts.filter(producto =>
+      producto.nombre.toLowerCase().includes(busquedaProducto.toLowerCase()) ||
+      producto.sku.toLowerCase().includes(busquedaProducto.toLowerCase()) ||
+      producto.marca.toLowerCase().includes(busquedaProducto.toLowerCase())
     );
-  }, [productSearch]);
+  }, [busquedaProducto]);
 
-  // Calculate totals
-  const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => {
-      const discount = item.discount || 0;
-      const itemTotal = item.qty * item.unitPrice;
-      return sum + (itemTotal - (itemTotal * discount / 100));
+  // Calcular totales de la venta
+  const totales = useMemo(() => {
+    const subtotal = productos.reduce((suma, producto) => {
+      const descuento = producto.discount || 0;
+      const totalProducto = producto.qty * producto.unitPrice;
+      return suma + (totalProducto - (totalProducto * descuento / 100));
     }, 0);
     
     const iva = subtotal * 0.16; // 16% IVA
     const total = subtotal + iva;
 
     return { subtotal, iva, total };
-  }, [items]);
+  }, [productos]);
 
-  // Reset form when modal opens
+  // Limpiar formulario cuando se abre el modal
   useEffect(() => {
     if (open) {
-      form.reset({
+      formulario.reset({
         metodoPago: 'efectivo',
         cliente: "",
         items: [],
       });
-      setItems([]);
-      setSelectedProductId("");
-      setQuantity(1);
-      setProductSearch("");
+      setProductos([]);
+      setProductoSeleccionadoId("");
+      setCantidad(1);
+      setBusquedaProducto("");
     }
-  }, [open, form]);
+  }, [open, formulario]);
 
-  const addItem = () => {
-    if (!selectedProductId || quantity <= 0) {
+  const agregarProducto = () => {
+    if (!productoSeleccionadoId || cantidad <= 0) {
       toast({
         title: "Error",
         description: "Debe seleccionar un producto y cantidad válida.",
@@ -130,53 +133,53 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       return;
     }
 
-    const product = mockProducts.find(p => p.id === selectedProductId);
-    if (!product) return;
+    const producto = mockProducts.find(p => p.id === productoSeleccionadoId);
+    if (!producto) return;
 
-    // Check if product already exists in items
-    const existingItemIndex = items.findIndex(item => item.productId === selectedProductId);
+    // Verificar si el producto ya existe en la lista
+    const indiceProductoExistente = productos.findIndex(item => item.productId === productoSeleccionadoId);
     
-    if (existingItemIndex >= 0) {
-      // Update existing item
-      const updatedItems = [...items];
-      updatedItems[existingItemIndex].qty += quantity;
-      setItems(updatedItems);
+    if (indiceProductoExistente >= 0) {
+      // Actualizar producto existente
+      const productosActualizados = [...productos];
+      productosActualizados[indiceProductoExistente].qty += cantidad;
+      setProductos(productosActualizados);
     } else {
-      // Add new item
-      const newItem: SaleItem = {
-        productId: selectedProductId,
-        qty: quantity,
-        unitPrice: product.precio,
+      // Agregar nuevo producto
+      const nuevoProducto: SaleItem = {
+        productId: productoSeleccionadoId,
+        qty: cantidad,
+        unitPrice: producto.precio,
         discount: 0,
       };
-      setItems([...items, newItem]);
+      setProductos([...productos, nuevoProducto]);
     }
 
-    setSelectedProductId("");
-    setQuantity(1);
-    setProductSearch("");
+    setProductoSeleccionadoId("");
+    setCantidad(1);
+    setBusquedaProducto("");
   };
 
-  const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+  const eliminarProducto = (indice: number) => {
+    setProductos(productos.filter((_, i) => i !== indice));
   };
 
-  const updateItemQuantity = (index: number, qty: number) => {
+  const actualizarCantidadProducto = (indice: number, qty: number) => {
     if (qty <= 0) return;
-    const updatedItems = [...items];
-    updatedItems[index].qty = qty;
-    setItems(updatedItems);
+    const productosActualizados = [...productos];
+    productosActualizados[indice].qty = qty;
+    setProductos(productosActualizados);
   };
 
-  const updateItemDiscount = (index: number, discount: number) => {
-    if (discount < 0 || discount > 100) return;
-    const updatedItems = [...items];
-    updatedItems[index].discount = discount;
-    setItems(updatedItems);
+  const actualizarDescuentoProducto = (indice: number, descuento: number) => {
+    if (descuento < 0 || descuento > 100) return;
+    const productosActualizados = [...productos];
+    productosActualizados[indice].discount = descuento;
+    setProductos(productosActualizados);
   };
 
-  const onSubmit = async (data: SaleFormData) => {
-    if (items.length === 0) {
+  const enviarFormulario = async (datos: DatosFormularioVenta) => {
+    if (productos.length === 0) {
       toast({
         title: "Error",
         description: "Debe agregar al menos un producto a la venta.",
@@ -185,16 +188,16 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       return;
     }
 
-    setIsSubmitting(true);
+    setEnviandoFormulario(true);
     try {
-      const saleData = {
-        ...data,
-        items,
+      const datosVenta = {
+        ...datos,
+        items: productos,
       };
-      await onSave(saleData);
+      await onSave(datosVenta);
       toast({
         title: "Venta registrada",
-        description: `Venta por ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totals.total)} registrada exitosamente.`,
+        description: `Venta por ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totales.total)} registrada exitosamente.`,
       });
       onOpenChange(false);
     } catch (error) {
@@ -204,7 +207,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setEnviandoFormulario(false);
     }
   };
 
@@ -223,12 +226,12 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Sale Details */}
+        <Form {...formulario}>
+          <form onSubmit={formulario.handleSubmit(enviarFormulario)} className="space-y-6">
+            {/* Detalles de la venta */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
-                control={form.control}
+                control={formulario.control}
                 name="metodoPago"
                 render={({ field }) => (
                   <FormItem>
@@ -252,7 +255,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
               />
 
               <FormField
-                control={form.control}
+                control={formulario.control}
                 name="cliente"
                 render={({ field }) => (
                   <FormItem>
@@ -277,29 +280,29 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                     <Search className="absolute left-2 top-2.5 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar por nombre, SKU o marca..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
+                      value={busquedaProducto}
+                      onChange={(e) => setBusquedaProducto(e.target.value)}
                       className="pl-8"
                     />
                   </div>
-                  {productSearch && (
+                  {busquedaProducto && (
                     <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                      {filteredProducts.slice(0, 5).map((product) => (
+                      {productosFiltrados.slice(0, 5).map((producto) => (
                         <button
-                          key={product.id}
+                          key={producto.id}
                           type="button"
                           className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
                           onClick={() => {
-                            setSelectedProductId(product.id);
-                            setProductSearch(`${product.nombre} - ${product.marca}`);
+                            setProductoSeleccionadoId(producto.id);
+                            setBusquedaProducto(`${producto.nombre} - ${producto.marca}`);
                           }}
                         >
                           <div>
-                            <span className="font-medium">{product.nombre}</span>
-                            <span className="text-muted-foreground"> - {product.marca}</span>
+                            <span className="font-medium">{producto.nombre}</span>
+                            <span className="text-muted-foreground"> - {producto.marca}</span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            SKU: {product.sku} | ${product.precio}
+                            SKU: {producto.sku} | ${producto.precio}
                           </div>
                         </button>
                       ))}
@@ -312,21 +315,21 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                   <Input
                     type="number"
                     min="1"
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                    value={cantidad}
+                    onChange={(e) => setCantidad(parseInt(e.target.value) || 1)}
                     placeholder="1"
                   />
                 </div>
 
-                <Button type="button" onClick={addItem} disabled={!selectedProductId}>
+                <Button type="button" onClick={agregarProducto} disabled={!productoSeleccionadoId}>
                   <Plus className="w-4 h-4 mr-2" />
                   Agregar
                 </Button>
               </div>
             </div>
 
-            {/* Items Table */}
-            {items.length > 0 && (
+            {/* Tabla de productos */}
+            {productos.length > 0 && (
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -340,30 +343,30 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item, index) => {
-                      const subtotal = item.qty * item.unitPrice;
-                      const discount = item.discount || 0;
-                      const total = subtotal - (subtotal * discount / 100);
+                    {productos.map((producto, indice) => {
+                      const subtotal = producto.qty * producto.unitPrice;
+                      const descuento = producto.discount || 0;
+                      const total = subtotal - (subtotal * descuento / 100);
                       
                       return (
-                        <TableRow key={index}>
+                        <TableRow key={indice}>
                           <TableCell>
                             <div className="text-sm">
-                              {getProductName(item.productId)}
+                              {getProductName(producto.productId)}
                             </div>
                           </TableCell>
                           <TableCell>
                             <Input
                               type="number"
                               min="1"
-                              value={item.qty}
-                              onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
+                              value={producto.qty}
+                              onChange={(e) => actualizarCantidadProducto(indice, parseInt(e.target.value) || 1)}
                               className="w-20"
                             />
                           </TableCell>
                           <TableCell>
                             <span className="text-sm">
-                              ${item.unitPrice.toFixed(2)}
+                              ${producto.unitPrice.toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -371,8 +374,8 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                               type="number"
                               min="0"
                               max="100"
-                              value={item.discount || 0}
-                              onChange={(e) => updateItemDiscount(index, parseFloat(e.target.value) || 0)}
+                              value={producto.discount || 0}
+                              onChange={(e) => actualizarDescuentoProducto(indice, parseFloat(e.target.value) || 0)}
                               className="w-20"
                             />
                           </TableCell>
@@ -386,7 +389,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeItem(index)}
+                              onClick={() => eliminarProducto(indice)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -399,21 +402,21 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
               </div>
             )}
 
-            {/* Totals */}
-            {items.length > 0 && (
+            {/* Totales de la venta */}
+            {productos.length > 0 && (
               <div className="flex justify-end">
                 <div className="w-80 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
-                    <span>${totals.subtotal.toFixed(2)}</span>
+                    <span>${totales.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>IVA (16%):</span>
-                    <span>${totals.iva.toFixed(2)}</span>
+                    <span>${totales.iva.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total:</span>
-                    <span>${totals.total.toFixed(2)}</span>
+                    <span>${totales.total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -424,12 +427,12 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
+                disabled={enviandoFormulario}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || items.length === 0}>
-                {isSubmitting ? "Registrando..." : "Registrar Venta"}
+              <Button type="submit" disabled={enviandoFormulario || productos.length === 0}>
+                {enviandoFormulario ? "Registrando..." : "Registrar Venta"}
               </Button>
             </DialogFooter>
           </form>

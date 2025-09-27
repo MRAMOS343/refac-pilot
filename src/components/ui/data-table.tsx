@@ -29,27 +29,29 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface Column<T> {
-  key: keyof T | string;
-  header: string;
-  sortable?: boolean;
-  render?: (value: any, row: T) => React.ReactNode;
-  className?: string;
+// Definición de columna para la tabla
+export interface Columna<T> {
+  key: keyof T | string; // Clave del campo a mostrar
+  header: string; // Texto del encabezado
+  sortable?: boolean; // Si se puede ordenar por esta columna
+  render?: (value: any, row: T) => React.ReactNode; // Función personalizada de renderizado
+  className?: string; // Clases CSS adicionales
 }
 
-interface DataTableProps<T> {
-  data: T[];
-  columns: Column<T>[];
-  loading?: boolean;
-  searchable?: boolean;
-  searchPlaceholder?: string;
-  pageSize?: number;
-  emptyMessage?: string;
-  emptyDescription?: string;
-  className?: string;
+// Propiedades del componente DataTable
+interface PropiedadesDataTable<T> {
+  data: T[]; // Datos a mostrar en la tabla
+  columns: Columna<T>[]; // Definición de columnas
+  loading?: boolean; // Estado de carga
+  searchable?: boolean; // Si permite búsqueda
+  searchPlaceholder?: string; // Texto del placeholder de búsqueda
+  pageSize?: number; // Número de elementos por página
+  emptyMessage?: string; // Mensaje cuando no hay datos
+  emptyDescription?: string; // Descripción adicional cuando no hay datos
+  className?: string; // Clases CSS adicionales
 }
 
-type SortDirection = 'asc' | 'desc' | null;
+type DireccionOrdenamiento = 'asc' | 'desc' | null;
 
 export function DataTable<T extends Record<string, any>>({
   data,
@@ -61,79 +63,80 @@ export function DataTable<T extends Record<string, any>>({
   emptyMessage = "No hay datos disponibles",
   emptyDescription = "No se encontraron registros para mostrar",
   className
-}: DataTableProps<T>) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<keyof T | string | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-  const [rowsPerPage, setRowsPerPage] = useState(pageSize);
+}: PropiedadesDataTable<T>) {
+  // Estados del componente para manejar búsqueda, paginación y ordenamiento
+  const [consultaBusqueda, setConsultaBusqueda] = useState("");
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [campoOrdenamiento, setCampoOrdenamiento] = useState<keyof T | string | null>(null);
+  const [direccionOrdenamiento, setDireccionOrdenamiento] = useState<DireccionOrdenamiento>(null);
+  const [filasPorPagina, setFilasPorPagina] = useState(pageSize);
 
-  // Filter and sort data
-  const processedData = useMemo(() => {
-    let filtered = data;
+  // Filtrar y ordenar datos
+  const datosProcesados = useMemo(() => {
+    let filtrados = data;
 
-    // Search filtering
-    if (searchQuery && searchable) {
-      filtered = data.filter(row =>
-        Object.values(row).some(value =>
-          String(value).toLowerCase().includes(searchQuery.toLowerCase())
+    // Filtrado por búsqueda
+    if (consultaBusqueda && searchable) {
+      filtrados = data.filter(fila =>
+        Object.values(fila).some(valor =>
+          String(valor).toLowerCase().includes(consultaBusqueda.toLowerCase())
         )
       );
     }
 
-    // Sorting
-    if (sortField && sortDirection) {
-      filtered = [...filtered].sort((a, b) => {
-        const aValue = a[sortField];
-        const bValue = b[sortField];
+    // Ordenamiento
+    if (campoOrdenamiento && direccionOrdenamiento) {
+      filtrados = [...filtrados].sort((a, b) => {
+        const valorA = a[campoOrdenamiento];
+        const valorB = b[campoOrdenamiento];
         
-        if (aValue === bValue) return 0;
+        if (valorA === valorB) return 0;
         
-        const comparison = aValue < bValue ? -1 : 1;
-        return sortDirection === 'asc' ? comparison : -comparison;
+        const comparacion = valorA < valorB ? -1 : 1;
+        return direccionOrdenamiento === 'asc' ? comparacion : -comparacion;
       });
     }
 
-    return filtered;
-  }, [data, searchQuery, searchable, sortField, sortDirection]);
+    return filtrados;
+  }, [data, consultaBusqueda, searchable, campoOrdenamiento, direccionOrdenamiento]);
 
-  // Pagination
-  const totalPages = Math.ceil(processedData.length / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedData = processedData.slice(startIndex, startIndex + rowsPerPage);
+  // Paginación
+  const totalPaginas = Math.ceil(datosProcesados.length / filasPorPagina);
+  const indiceInicio = (paginaActual - 1) * filasPorPagina;
+  const datosPaginados = datosProcesados.slice(indiceInicio, indiceInicio + filasPorPagina);
 
-  // Reset page when data changes
+  // Resetear página cuando cambian los datos
   useMemo(() => {
-    setCurrentPage(1);
-  }, [processedData.length]);
+    setPaginaActual(1);
+  }, [datosProcesados.length]);
 
-  const handleSort = (field: keyof T | string) => {
-    const column = columns.find(col => col.key === field);
-    if (!column?.sortable) return;
+  const manejarOrdenamiento = (campo: keyof T | string) => {
+    const columna = columns.find(col => col.key === campo);
+    if (!columna?.sortable) return;
 
-    if (sortField === field) {
-      setSortDirection(
-        sortDirection === 'asc' ? 'desc' : 
-        sortDirection === 'desc' ? null : 'asc'
+    if (campoOrdenamiento === campo) {
+      setDireccionOrdenamiento(
+        direccionOrdenamiento === 'asc' ? 'desc' : 
+        direccionOrdenamiento === 'desc' ? null : 'asc'
       );
-      if (sortDirection === 'desc') {
-        setSortField(null);
+      if (direccionOrdenamiento === 'desc') {
+        setCampoOrdenamiento(null);
       }
     } else {
-      setSortField(field);
-      setSortDirection('asc');
+      setCampoOrdenamiento(campo);
+      setDireccionOrdenamiento('asc');
     }
   };
 
-  const getSortIcon = (field: keyof T | string) => {
-    if (sortField !== field) return <ArrowUpDown className="w-4 h-4" />;
-    if (sortDirection === 'asc') return <ArrowUp className="w-4 h-4" />;
-    if (sortDirection === 'desc') return <ArrowDown className="w-4 h-4" />;
+  const obtenerIconoOrdenamiento = (campo: keyof T | string) => {
+    if (campoOrdenamiento !== campo) return <ArrowUpDown className="w-4 h-4" />;
+    if (direccionOrdenamiento === 'asc') return <ArrowUp className="w-4 h-4" />;
+    if (direccionOrdenamiento === 'desc') return <ArrowDown className="w-4 h-4" />;
     return <ArrowUpDown className="w-4 h-4" />;
   };
 
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  const irAPagina = (pagina: number) => {
+    setPaginaActual(Math.max(1, Math.min(pagina, totalPaginas)));
   };
 
   if (loading) {
@@ -182,8 +185,8 @@ export function DataTable<T extends Record<string, any>>({
             <Search className="absolute left-2 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={consultaBusqueda}
+              onChange={(e) => setConsultaBusqueda(e.target.value)}
               className="pl-8"
             />
           </div>
@@ -202,18 +205,18 @@ export function DataTable<T extends Record<string, any>>({
                     column.sortable && "cursor-pointer hover:bg-muted/50 select-none",
                     column.className
                   )}
-                  onClick={() => column.sortable && handleSort(column.key)}
+                  onClick={() => column.sortable && manejarOrdenamiento(column.key)}
                 >
                   <div className="flex items-center gap-2">
                     {column.header}
-                    {column.sortable && getSortIcon(column.key)}
+                    {column.sortable && obtenerIconoOrdenamiento(column.key)}
                   </div>
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedData.length === 0 ? (
+            {datosPaginados.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-center py-8">
                   <div className="space-y-2">
@@ -227,13 +230,13 @@ export function DataTable<T extends Record<string, any>>({
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedData.map((row, index) => (
-                <TableRow key={index}>
-                  {columns.map((column, colIndex) => (
-                    <TableCell key={colIndex} className={column.className}>
-                      {column.render 
-                        ? column.render(row[column.key], row)
-                        : String(row[column.key] || '-')
+              datosPaginados.map((fila, indice) => (
+                <TableRow key={indice}>
+                  {columns.map((columna, indiceColumna) => (
+                    <TableCell key={indiceColumna} className={columna.className}>
+                      {columna.render 
+                        ? columna.render(fila[columna.key], fila)
+                        : String(fila[columna.key] || '-')
                       }
                     </TableCell>
                   ))}
@@ -244,16 +247,16 @@ export function DataTable<T extends Record<string, any>>({
         </Table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Paginación */}
+      {totalPaginas > 1 && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Filas por página:</span>
             <Select
-              value={String(rowsPerPage)}
-              onValueChange={(value) => {
-                setRowsPerPage(Number(value));
-                setCurrentPage(1);
+              value={String(filasPorPagina)}
+              onValueChange={(valor) => {
+                setFilasPorPagina(Number(valor));
+                setPaginaActual(1);
               }}
             >
               <SelectTrigger className="w-16">
@@ -270,7 +273,7 @@ export function DataTable<T extends Record<string, any>>({
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>
-              {startIndex + 1}-{Math.min(startIndex + rowsPerPage, processedData.length)} de {processedData.length}
+              {indiceInicio + 1}-{Math.min(indiceInicio + filasPorPagina, datosProcesados.length)} de {datosProcesados.length}
             </span>
           </div>
 
@@ -278,42 +281,42 @@ export function DataTable<T extends Record<string, any>>({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => goToPage(1)}
-              disabled={currentPage === 1}
+              onClick={() => irAPagina(1)}
+              disabled={paginaActual === 1}
             >
               <ChevronsLeft className="w-4 h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
+              onClick={() => irAPagina(paginaActual - 1)}
+              disabled={paginaActual === 1}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
             
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
+              {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                let numeroPagina;
+                if (totalPaginas <= 5) {
+                  numeroPagina = i + 1;
+                } else if (paginaActual <= 3) {
+                  numeroPagina = i + 1;
+                } else if (paginaActual >= totalPaginas - 2) {
+                  numeroPagina = totalPaginas - 4 + i;
                 } else {
-                  pageNum = currentPage - 2 + i;
+                  numeroPagina = paginaActual - 2 + i;
                 }
 
                 return (
                   <Button
                     key={i}
-                    variant={currentPage === pageNum ? "default" : "outline"}
+                    variant={paginaActual === numeroPagina ? "default" : "outline"}
                     size="sm"
-                    onClick={() => goToPage(pageNum)}
+                    onClick={() => irAPagina(numeroPagina)}
                     className="w-8"
                   >
-                    {pageNum}
+                    {numeroPagina}
                   </Button>
                 );
               })}
@@ -322,16 +325,16 @@ export function DataTable<T extends Record<string, any>>({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              onClick={() => irAPagina(paginaActual + 1)}
+              disabled={paginaActual === totalPaginas}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => goToPage(totalPages)}
-              disabled={currentPage === totalPages}
+              onClick={() => irAPagina(totalPaginas)}
+              disabled={paginaActual === totalPaginas}
             >
               <ChevronsRight className="w-4 h-4" />
             </Button>
