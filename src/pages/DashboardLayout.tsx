@@ -9,10 +9,11 @@ import { mockWarehouses } from '../data/mockData';
 import { toast } from '@/hooks/use-toast';
 
 const routeLabels: Record<string, string> = {
-  '/inventario': 'Inventario',
-  '/ventas': 'Ventas', 
-  '/prediccion': 'Predicción de Ventas',
-  '/compras': 'Compra Sugerida',
+  '/dashboard': 'Dashboard',
+  '/dashboard/inventario': 'Inventario',
+  '/dashboard/ventas': 'Ventas', 
+  '/dashboard/prediccion': 'Predicción de Ventas',
+  '/dashboard/compras': 'Compra Sugerida',
   '/configuracion': 'Configuración'
 };
 
@@ -105,17 +106,20 @@ export function DashboardLayout() {
         // Handle "g" followed by letter shortcuts
         const handleSecondKey = (e2: KeyboardEvent) => {
           switch (e2.key) {
+            case 'd':
+              navigate('/dashboard');
+              break;
             case 'i':
-              navigate('/inventario');
+              navigate('/dashboard/inventario');
               break;
             case 'v':
-              navigate('/ventas');
+              navigate('/dashboard/ventas');
               break;
             case 'p':
-              navigate('/prediccion');
+              navigate('/dashboard/prediccion');
               break;
             case 'c':
-              navigate('/compras');
+              navigate('/dashboard/compras');
               break;
           }
           document.removeEventListener('keydown', handleSecondKey);

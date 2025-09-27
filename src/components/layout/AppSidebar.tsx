@@ -6,7 +6,8 @@ import {
   ShoppingBag,
   Settings,
   User,
-  LogOut
+  LogOut,
+  LayoutDashboard
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -28,26 +29,32 @@ import { Separator } from "@/components/ui/separator";
 
 const mainNavItems = [
   { 
+    title: "Dashboard", 
+    url: "/dashboard", 
+    icon: LayoutDashboard,
+    description: "Resumen general del sistema"
+  },
+  { 
     title: "Inventario", 
-    url: "/inventario", 
+    url: "/dashboard/inventario", 
     icon: Package,
     description: "Gestión de productos y stock"
   },
   { 
     title: "Ventas", 
-    url: "/ventas", 
+    url: "/dashboard/ventas", 
     icon: ShoppingCart,
     description: "Registro y consulta de ventas"
   },
   { 
     title: "Predicción", 
-    url: "/prediccion", 
+    url: "/dashboard/prediccion", 
     icon: TrendingUp,
     description: "Pronósticos de demanda"
   },
   { 
     title: "Compra Sugerida", 
-    url: "/compras", 
+    url: "/dashboard/compras", 
     icon: ShoppingBag,
     description: "Sugerencias de reabastecimiento"
   },

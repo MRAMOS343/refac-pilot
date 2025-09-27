@@ -28,7 +28,7 @@ export function KPICard({
     if (!data.change) return null;
     switch (data.changeType) {
       case 'positive':
-        return;
+        return <TrendingUp className="w-4 h-4 text-green-600" />;
       case 'negative':
         return <TrendingDown className="w-4 h-4 text-destructive" />;
       default:
@@ -38,14 +38,14 @@ export function KPICard({
   const getChangeColorClass = () => {
     switch (data.changeType) {
       case 'positive':
-        return 'text-success';
+        return 'text-green-600';
       case 'negative':
         return 'text-destructive';
       default:
         return 'text-muted-foreground';
     }
   };
-  return <div className={cn("kpi-card", className)}>
+  return <div className={cn("bg-card p-6 rounded-lg border shadow-sm", className)}>
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">
@@ -57,7 +57,7 @@ export function KPICard({
         </div>
         {data.change !== undefined && <div className={cn("flex items-center gap-1 text-sm", getChangeColorClass())}>
             {getChangeIcon()}
-            
+            <span>{data.change > 0 ? '+' : ''}{data.change}%</span>
           </div>}
       </div>
     </div>;

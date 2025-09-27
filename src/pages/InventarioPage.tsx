@@ -6,410 +6,487 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { KPICard } from '@/components/ui/kpi-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, Column } from '@/components/ui/data-table';
+import { ProductModal } from '@/components/modals/ProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Upload, AlertTriangle, Package, TrendingDown } from 'lucide-react';
+import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X } from 'lucide-react';
 import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
 import { Product, Inventory, User, KPIData } from '../types';
 import { toast } from '@/hooks/use-toast';
+
 interface ContextType {
   currentWarehouse: string;
   searchQuery: string;
   currentUser: User;
 }
+
+interface InventoryWithProduct extends Inventory {
+  product: Product;
+}
+
 export default function InventarioPage() {
-  const {
-    currentWarehouse,
-    searchQuery,
-    currentUser
-  } = useOutletContext<ContextType>();
+  const { currentWarehouse, searchQuery, currentUser } = useOutletContext<ContextType>();
   const [selectedMarca, setSelectedMarca] = useState<string>('all');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('all');
-  const [sortField, setSortField] = useState<string>('nombre');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Get unique brands and categories for filters
   const marcas = [...new Set(mockProducts.map(p => p.marca))];
   const categorias = [...new Set(mockProducts.map(p => p.categoria))];
 
-  // Filter and sort inventory data
-  const filteredInventory = useMemo(() => {
-    return mockInventory.filter(inv => inv.warehouseId === currentWarehouse).map(inv => {
-      const product = getProductById(inv.productId);
-      return {
-        ...inv,
-        product
-      };
-    }).filter(item => {
-      if (!item.product) return false;
+  // Filter inventory data for current warehouse
+  const warehouseInventory = useMemo(() => {
+    return mockInventory
+      .filter(inv => inv.warehouseId === currentWarehouse)
+      .map(inv => {
+        const product = getProductById(inv.productId);
+        return product ? { ...inv, product } : null;
+      })
+      .filter((item): item is InventoryWithProduct => item !== null)
+      .filter(item => {
+        // Search filter
+        if (searchQuery) {
+          const searchLower = searchQuery.toLowerCase();
+          if (!item.product.nombre.toLowerCase().includes(searchLower) && 
+              !item.product.sku.toLowerCase().includes(searchLower) && 
+              !item.product.marca.toLowerCase().includes(searchLower)) {
+            return false;
+          }
+        }
 
-      // Search filter
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase();
-        if (!item.product.nombre.toLowerCase().includes(searchLower) && !item.product.sku.toLowerCase().includes(searchLower) && !item.product.marca.toLowerCase().includes(searchLower)) {
+        // Brand filter
+        if (selectedMarca !== 'all' && item.product.marca !== selectedMarca) {
           return false;
         }
-      }
 
-      // Brand filter
-      if (selectedMarca && selectedMarca !== 'all' && item.product.marca !== selectedMarca) return false;
+        // Category filter
+        if (selectedCategoria !== 'all' && item.product.categoria !== selectedCategoria) {
+          return false;
+        }
 
-      // Category filter
-      if (selectedCategoria && selectedCategoria !== 'all' && item.product.categoria !== selectedCategoria) return false;
-      return true;
-    }).sort((a, b) => {
-      if (!a.product || !b.product) return 0;
-      let aValue: any = a.product[sortField as keyof Product] || a[sortField as keyof Inventory];
-      let bValue: any = b.product[sortField as keyof Product] || b[sortField as keyof Inventory];
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [currentWarehouse, searchQuery, selectedMarca, selectedCategoria, sortField, sortDirection]);
+        return true;
+      });
+  }, [currentWarehouse, searchQuery, selectedMarca, selectedCategoria]);
 
   // Calculate KPIs for current warehouse
-  const kpis: KPIData[] = useMemo(() => {
-    const warehouseInventory = mockInventory.filter(inv => inv.warehouseId === currentWarehouse);
-    const lowStockItems = warehouseInventory.filter(inv => {
-      const product = getProductById(inv.productId);
-      return product && inv.onHand <= product.reorderPoint;
-    }).length;
+  const warehouseKPIs = useMemo((): KPIData[] => {
+    const lowStockItems = warehouseInventory.filter(inv => inv.onHand <= inv.product.reorderPoint).length;
+    const totalStockValue = warehouseInventory.reduce((sum, inv) => sum + (inv.onHand * inv.product.precio), 0);
     const totalItems = warehouseInventory.reduce((sum, inv) => sum + inv.onHand, 0);
 
-    // Mock rotation calculation
-    const avgRotation = 2.3;
-    return [{
-      label: 'Ítems en Bajo Stock',
-      value: lowStockItems,
-      changeType: lowStockItems > 5 ? 'negative' : 'positive',
-      change: -12.5,
-      format: 'number'
-    }, {
-      label: 'Stock Total',
-      value: totalItems,
-      changeType: 'positive',
-      change: 8.2,
-      format: 'number'
-    }, {
-      label: 'Rotación Promedio',
-      value: avgRotation,
-      changeType: 'positive',
-      change: 5.1,
-      format: 'number'
-    }];
-  }, [currentWarehouse]);
+    return [
+      {
+        label: "Stock Bajo",
+        value: lowStockItems,
+        format: "number",
+        change: lowStockItems > 0 ? 15.3 : -8.2,
+        changeType: lowStockItems > 0 ? "negative" : "positive"
+      },
+      {
+        label: "Valor Total",
+        value: totalStockValue,
+        format: "currency",
+        change: 5.7,
+        changeType: "positive"
+      },
+      {
+        label: "Productos Únicos",
+        value: warehouseInventory.length,
+        format: "number",
+        change: 2.1,
+        changeType: "positive"
+      },
+      {
+        label: "Unidades Totales",
+        value: totalItems,
+        format: "number",
+        change: -1.2,
+        changeType: "negative"
+      }
+    ];
+  }, [warehouseInventory]);
 
   // Calculate global totals across all warehouses
   const globalTotals = useMemo(() => {
     const allInventory = mockInventory.map(inv => {
       const product = getProductById(inv.productId);
-      return {
-        ...inv,
-        product
-      };
-    }).filter(item => item.product);
-    const totalStockValue = allInventory.reduce((sum, inv) => sum + inv.onHand * inv.product!.precio, 0);
-    const totalProducts = new Set(allInventory.map(inv => inv.productId)).size;
+      return product ? { ...inv, product } : null;
+    }).filter((item): item is InventoryWithProduct => item !== null);
+
+    const totalStockValue = allInventory.reduce((sum, inv) => sum + (inv.onHand * inv.product.precio), 0);
+    const uniqueProducts = new Set(allInventory.map(inv => inv.productId)).size;
     const totalItems = allInventory.reduce((sum, inv) => sum + inv.onHand, 0);
-    const globalLowStock = allInventory.filter(inv => inv.onHand <= inv.product!.reorderPoint).length;
-    const warehouseBreakdown = mockWarehouses.map(warehouse => {
-      const warehouseInv = allInventory.filter(inv => inv.warehouseId === warehouse.id);
-      const warehouseTotal = warehouseInv.reduce((sum, inv) => sum + inv.onHand, 0);
-      const warehouseValue = warehouseInv.reduce((sum, inv) => sum + inv.onHand * inv.product!.precio, 0);
-      return {
-        warehouse: warehouse.nombre,
-        totalItems: warehouseTotal,
-        totalValue: warehouseValue,
-        uniqueProducts: new Set(warehouseInv.map(inv => inv.productId)).size
-      };
-    });
+
+    // Group by warehouse
+    const byWarehouse = allInventory.reduce((acc, inv) => {
+      if (!acc[inv.warehouseId]) {
+        acc[inv.warehouseId] = { products: 0, items: 0, value: 0 };
+      }
+      acc[inv.warehouseId].products += 1;
+      acc[inv.warehouseId].items += inv.onHand;
+      acc[inv.warehouseId].value += inv.onHand * inv.product.precio;
+      return acc;
+    }, {} as Record<string, { products: number; items: number; value: number }>);
+
     return {
       totalStockValue,
-      totalProducts,
+      uniqueProducts,
       totalItems,
-      globalLowStock,
-      warehouseBreakdown
+      byWarehouse
     };
   }, []);
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+
+  // Define columns for the data table
+  const inventoryColumns: Column<InventoryWithProduct>[] = [
+    {
+      key: 'product.sku',
+      header: 'SKU',
+      sortable: true,
+      render: (_, row) => (
+        <span className="font-mono text-sm">{row.product.sku}</span>
+      )
+    },
+    {
+      key: 'product.nombre',
+      header: 'Producto',
+      sortable: true,
+      render: (_, row) => (
+        <div>
+          <p className="font-medium">{row.product.nombre}</p>
+          <p className="text-sm text-muted-foreground">{row.product.marca}</p>
+        </div>
+      )
+    },
+    {
+      key: 'product.categoria',
+      header: 'Categoría',
+      sortable: true,
+      render: (_, row) => (
+        <Badge variant="outline">{row.product.categoria}</Badge>
+      )
+    },
+    {
+      key: 'onHand',
+      header: 'Stock',
+      sortable: true,
+      render: (_, row) => (
+        <div className="text-right">
+          <span className="font-medium">{row.onHand}</span>
+          <span className="text-sm text-muted-foreground ml-1">{row.product.unidad}</span>
+        </div>
+      )
+    },
+    {
+      key: 'product.precio',
+      header: 'Precio',
+      sortable: true,
+      render: (_, row) => (
+        <span className="font-medium">
+          {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(row.product.precio)}
+        </span>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      render: (_, row) => getStockStatusBadge(row)
+    },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      render: (_, row) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleEditProduct(row.product)}
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+      )
+    }
+  ];
+
+  const getStockStatusBadge = (inv: InventoryWithProduct) => {
+    if (inv.onHand <= inv.product.reorderPoint) {
+      return <Badge variant="destructive">Stock Bajo</Badge>;
+    } else if (inv.onHand <= inv.product.safetyStock + inv.product.reorderPoint) {
+      return <Badge variant="secondary">Stock Medio</Badge>;
     } else {
-      setSortField(field);
-      setSortDirection('asc');
+      return <Badge className="bg-green-100 text-green-700">Stock Alto</Badge>;
     }
   };
-  const handleExportCSV = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Generando archivo CSV..."
-    });
-    // Mock export functionality
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductModalOpen(true);
   };
+
+  const handleCreateProduct = () => {
+    setEditingProduct(null);
+    setProductModalOpen(true);
+  };
+
+  const handleSaveProduct = async (productData: any) => {
+    // Simulate saving
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    if (editingProduct) {
+      toast({
+        title: "Producto actualizado",
+        description: `${productData.nombre} ha sido actualizado exitosamente.`,
+      });
+    } else {
+      toast({
+        title: "Producto creado",
+        description: `${productData.nombre} ha sido creado exitosamente.`,
+      });
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (currentUser.role === 'cajero') {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permisos para exportar datos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Exportando...",
+      description: "Los datos se están exportando a CSV.",
+    });
+  };
+
   const handleImportCSV = () => {
     if (currentUser.role === 'cajero') {
       toast({
         title: "Acceso denegado",
-        description: "Solo gerentes y administradores pueden importar datos.",
-        variant: "destructive"
+        description: "No tienes permisos para importar datos.",
+        variant: "destructive",
       });
       return;
     }
+    
     toast({
-      title: "Función disponible próximamente",
-      description: "La importación de CSV será implementada en la siguiente versión."
+      title: "Función no disponible",
+      description: "La importación CSV estará disponible próximamente.",
     });
   };
-  const getStockStatusBadge = (inv: Inventory & {
-    product?: Product;
-  }) => {
-    if (!inv.product) return <Badge variant="outline">Sin datos</Badge>;
-    if (inv.onHand <= 0) {
-      return <Badge variant="destructive">Sin stock</Badge>;
-    } else if (inv.onHand <= inv.product.reorderPoint) {
-      return <Badge variant="destructive">Bajo stock</Badge>;
-    } else if (inv.onHand <= inv.product.reorderPoint * 1.5) {
-      return <Badge variant="secondary">Stock normal</Badge>;
-    } else {
-      return <Badge variant="default">Stock alto</Badge>;
-    }
+
+  const clearFilters = () => {
+    setSelectedMarca('all');
+    setSelectedCategoria('all');
   };
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Inventario</h1>
           <p className="text-muted-foreground">
-            Gestión de productos en {getWarehouseById(currentWarehouse)?.nombre}
+            {getWarehouseById(currentWarehouse)?.nombre || 'Sucursal no encontrada'}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleExportCSV} variant="outline" size="sm">
+          <Button variant="outline" onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" />
             Exportar CSV
           </Button>
-          <Button onClick={handleImportCSV} variant="outline" size="sm" disabled={currentUser.role === 'cajero'}>
+          <Button variant="outline" onClick={handleImportCSV}>
             <Upload className="w-4 h-4 mr-2" />
             Importar CSV
+          </Button>
+          <Button onClick={handleCreateProduct}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Producto
           </Button>
         </div>
       </div>
 
-      {/* Tabs for Warehouse and Global View */}
-      <Tabs defaultValue="warehouse" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="warehouse" className="space-y-4">
+        <TabsList>
           <TabsTrigger value="warehouse">Vista por Sucursal</TabsTrigger>
           <TabsTrigger value="global">Totales Globales</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="warehouse" className="space-y-6">
-          {/* KPIs for current warehouse */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {kpis.map((kpi, index) => <KPICard key={index} data={kpi} />)}
+          {/* KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {warehouseKPIs.map((kpi, index) => (
+              <KPICard key={index} data={kpi} />
+            ))}
           </div>
+
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Filtros</CardTitle>
+              <CardDescription>
+                Filtra los productos por marca y categoría
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Marca</label>
+                  <Select value={selectedMarca} onValueChange={setSelectedMarca}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas las marcas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las marcas</SelectItem>
+                      {marcas.map((marca) => (
+                        <SelectItem key={marca} value={marca}>
+                          {marca}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Categoría</label>
+                  <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas las categorías" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las categorías</SelectItem>
+                      {categorias.map((categoria) => (
+                        <SelectItem key={categoria} value={categoria}>
+                          {categoria}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={clearFilters}
+                    className="w-full"
+                    disabled={selectedMarca === 'all' && selectedCategoria === 'all'}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Limpiar Filtros
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Inventory Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Productos en Inventario</CardTitle>
+              <CardDescription>
+                {warehouseInventory.length} productos en {getWarehouseById(currentWarehouse)?.nombre}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={warehouseInventory}
+                columns={inventoryColumns}
+                searchable={true}
+                searchPlaceholder="Buscar por nombre, SKU o marca..."
+                emptyMessage="No hay productos en inventario"
+                emptyDescription="No se encontraron productos que coincidan con los filtros aplicados"
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="global" className="space-y-6">
           {/* Global KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard data={{
-            label: 'Valor Total Inventario',
-            value: globalTotals.totalStockValue,
-            changeType: 'positive',
-            change: 15.3,
-            format: 'currency'
-          }} />
+              label: "Valor Total Global",
+              value: globalTotals.totalStockValue,
+              format: "currency",
+              change: 8.3,
+              changeType: "positive"
+            }} />
             <KPICard data={{
-            label: 'Productos Únicos',
-            value: globalTotals.totalProducts,
-            changeType: 'neutral',
-            change: 0,
-            format: 'number'
-          }} />
+              label: "Productos Únicos",
+              value: globalTotals.uniqueProducts,
+              format: "number",
+              change: 3.2,
+              changeType: "positive"
+            }} />
             <KPICard data={{
-            label: 'Items Totales',
-            value: globalTotals.totalItems,
-            changeType: 'positive',
-            change: 8.7,
-            format: 'number'
-          }} />
+              label: "Total de Unidades",
+              value: globalTotals.totalItems,
+              format: "number",
+              change: -0.8,
+              changeType: "negative"
+            }} />
             <KPICard data={{
-            label: 'Bajo Stock Global',
-            value: globalTotals.globalLowStock,
-            changeType: globalTotals.globalLowStock > 15 ? 'negative' : 'positive',
-            change: -5.2,
-            format: 'number'
-          }} />
+              label: "Sucursales Activas",
+              value: Object.keys(globalTotals.byWarehouse).length,
+              format: "number"
+            }} />
           </div>
 
-          {/* Warehouse Breakdown Table */}
+          {/* Breakdown by Warehouse */}
           <Card>
             <CardHeader>
-              <CardTitle>Desglose por Sucursal</CardTitle>
+              <CardTitle>Resumen por Sucursal</CardTitle>
               <CardDescription>
-                Resumen de inventario por cada sucursal
+                Distribución del inventario por sucursal
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Sucursal</TableHead>
-                    <TableHead className="text-right">Items Totales</TableHead>
-                    <TableHead className="text-right">Productos Únicos</TableHead>
-                    <TableHead className="text-right">Valor Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {globalTotals.warehouseBreakdown.map((warehouse, index) => <TableRow key={index}>
-                      <TableCell className="font-medium">{warehouse.warehouse}</TableCell>
-                      <TableCell className="text-right">{warehouse.totalItems.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">{warehouse.uniqueProducts}</TableCell>
-                      <TableCell className="text-right">${warehouse.totalValue.toLocaleString('es-MX', {
-                      minimumFractionDigits: 2
-                    })}</TableCell>
-                    </TableRow>)}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {Object.entries(globalTotals.byWarehouse).map(([warehouseId, data]) => {
+                  const warehouse = getWarehouseById(warehouseId);
+                  return (
+                    <div key={warehouseId} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Package className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{warehouse?.nombre || 'Sucursal desconocida'}</p>
+                          <p className="text-sm text-muted-foreground">{warehouse?.direccion}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-right">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Productos</p>
+                          <p className="font-semibold">{data.products}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Unidades</p>
+                          <p className="font-semibold">{data.items.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Valor</p>
+                          <p className="font-semibold">
+                            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(data.value)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Filters - Only show on warehouse tab */}
-      <Tabs defaultValue="warehouse" className="w-full">
-        <TabsContent value="warehouse">
-          <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>
-            Filtra el inventario por marca, categoría y otros criterios
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Marca</label>
-              <Select value={selectedMarca} onValueChange={setSelectedMarca}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas las marcas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las marcas</SelectItem>
-                  {marcas.map(marca => <SelectItem key={marca} value={marca}>{marca}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Categoría</label>
-              <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas las categorías" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las categorías</SelectItem>
-                  {categorias.map(categoria => <SelectItem key={categoria} value={categoria}>{categoria}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Buscar</label>
-              <Input placeholder="SKU, nombre o marca..." value={searchQuery} readOnly className="bg-muted" />
-            </div>
-
-            <div className="flex items-end">
-              <Button onClick={() => {
-                  setSelectedMarca('all');
-                  setSelectedCategoria('all');
-                }} variant="outline" className="w-full">
-                Limpiar filtros
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-          {/* Inventory Table */}
-          <Card className="data-table">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Productos en Inventario</CardTitle>
-              <CardDescription>
-                {filteredInventory.length} productos encontrados
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('sku')}>Código</TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('nombre')}>
-                    Producto
-                  </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('marca')}>
-                    Marca
-                  </TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead className="text-right">Precio</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-right">Reservado</TableHead>
-                  <TableHead className="text-right">Disponible</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInventory.map(inv => {
-                    const product = inv.product!;
-                    const disponible = inv.onHand - inv.reserved;
-                    return <TableRow key={`${inv.productId}-${inv.warehouseId}`} className="hover:bg-muted/50">
-                      <TableCell className="font-mono text-sm">{product.sku}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{product.nombre}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {product.unidad}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{product.marca}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.categoria}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${product.precio.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {inv.onHand}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {inv.reserved}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={disponible <= 0 ? 'text-destructive font-medium' : ''}>
-                          {disponible}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {getStockStatusBadge(inv)}
-                      </TableCell>
-                    </TableRow>;
-                  })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-        </TabsContent>
-      </Tabs>
-    </div>;
+      {/* Product Modal */}
+      <ProductModal
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        product={editingProduct}
+        onSave={handleSaveProduct}
+      />
+    </div>
+  );
 }
