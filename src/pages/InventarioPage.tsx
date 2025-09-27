@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { KPICard } from '@/components/ui/kpi-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DataTable, Column } from '@/components/ui/data-table';
+import { DataTable, Columna } from '@/components/ui/data-table';
 import { ProductModal } from '@/components/modals/ProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X } from 'lucide-react';
@@ -138,7 +138,7 @@ export default function InventarioPage() {
   }, []);
 
   // Define columns for the data table
-  const inventoryColumns: Column<InventoryWithProduct>[] = [
+  const inventoryColumns: Columna<InventoryWithProduct>[] = [
     {
       key: 'product.sku',
       header: 'SKU',
