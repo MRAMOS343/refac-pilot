@@ -187,11 +187,11 @@
   }
   
   .sidebar-item-active {
-    @apply bg-primary text-primary-foreground font-medium shadow-sm;
+    @apply bg-primary text-primary-foreground font-medium shadow-sm py-4 px-3;
   }
   
   .sidebar-item {
-    @apply hover:bg-secondary-hover transition-colors duration-200;
+    @apply hover:bg-secondary-hover transition-colors duration-200 py-4 px-3;
   }
 }
 
