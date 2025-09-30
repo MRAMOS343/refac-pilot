@@ -109,7 +109,7 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
             Navegación Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-2">
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
