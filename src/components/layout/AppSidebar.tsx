@@ -72,6 +72,12 @@ const mainNavItems = [
     icon: Truck,
     description: "Directorio de proveedores"
   },
+  { 
+    title: "Configuración", 
+    url: "/dashboard/configuracion", 
+    icon: Settings,
+    description: "Preferencias del sistema"
+  },
 ];
 
 interface AppSidebarProps {
@@ -145,26 +151,6 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {!collapsed && (
-          <>
-            <Separator className="my-4" />
-            <SidebarGroup>
-              <SidebarGroupLabel>Configuración</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink to="/configuracion" className={getNavClass('/configuracion')}>
-                        <Settings className="w-5 h-5" />
-                        <span>Configuración</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4">

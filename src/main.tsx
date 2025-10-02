@@ -11,6 +11,7 @@ import ComprasPage from "./pages/ComprasPage";
 import PrediccionPage from "./pages/PrediccionPage";
 import EquiposPage from "./pages/EquiposPage";
 import ProveedoresPage from "./pages/ProveedoresPage";
+import ConfiguracionPage from "./pages/ConfiguracionPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -63,6 +64,10 @@ const router = createBrowserRouter([
           {
             path: "proveedores",
             element: <ProveedoresPage />,
+          },
+          {
+            path: "configuracion",
+            element: <ConfiguracionPage />,
           },
         ],
       },
