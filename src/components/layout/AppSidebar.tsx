@@ -9,7 +9,8 @@ import {
   LogOut,
   LayoutDashboard,
   Users,
-  Truck
+  Truck,
+  LifeBuoy
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -77,6 +78,12 @@ const mainNavItems = [
     url: "/dashboard/configuracion", 
     icon: Settings,
     description: "Preferencias del sistema"
+  },
+  { 
+    title: "Soporte", 
+    url: "/dashboard/soporte", 
+    icon: LifeBuoy,
+    description: "Tickets y ayuda"
   },
 ];
 

@@ -1,4 +1,4 @@
-import { Product, Warehouse, Inventory, Sale, User, Team, Supplier } from '../types';
+import { Product, Warehouse, Inventory, Sale, User, Team, Supplier, Ticket, TicketComment } from '../types';
 
 // Mock warehouses (sucursales)
 export const mockWarehouses: Warehouse[] = [
@@ -350,3 +350,144 @@ export const getTeamById = (id: string): Team | undefined =>
 
 export const getSupplierById = (id: string): Supplier | undefined => 
   mockSuppliers.find(s => s.id === id);
+
+// Mock tickets
+export const mockTickets: Ticket[] = [
+  {
+    id: 'tk1',
+    titulo: 'Error al generar reporte de ventas',
+    descripcion: 'Cuando intento generar el reporte de ventas del mes, la página se congela y no responde.',
+    categoria: 'bug',
+    prioridad: 'alta',
+    estado: 'en_progreso',
+    userId: 'u2',
+    usuarioNombre: 'Carlos Gerente',
+    asignadoA: 'Admin Sistema',
+    metadata: {
+      navegador: 'Chrome 120.0',
+      dispositivo: 'Desktop',
+      url: '/dashboard/ventas'
+    },
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tk2',
+    titulo: '¿Cómo exportar el inventario a Excel?',
+    descripcion: 'Necesito exportar todo el inventario de mi sucursal a Excel para hacer un análisis externo. ¿Hay alguna forma de hacerlo?',
+    categoria: 'consulta',
+    prioridad: 'media',
+    estado: 'resuelto',
+    userId: 'u3',
+    usuarioNombre: 'María Cajera',
+    asignadoA: 'Admin Sistema',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    resueltoAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tk3',
+    titulo: 'Sugerencia: Modo oscuro',
+    descripcion: 'Sería genial tener un modo oscuro para trabajar de noche sin cansar la vista.',
+    categoria: 'sugerencia',
+    prioridad: 'baja',
+    estado: 'cerrado',
+    userId: 'u2',
+    usuarioNombre: 'Carlos Gerente',
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    resueltoAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tk4',
+    titulo: 'No puedo acceder a compras sugeridas',
+    descripcion: 'Me aparece un error 403 cuando intento entrar a la sección de compras sugeridas.',
+    categoria: 'soporte',
+    prioridad: 'alta',
+    estado: 'abierto',
+    userId: 'u3',
+    usuarioNombre: 'María Cajera',
+    metadata: {
+      navegador: 'Firefox 121.0',
+      dispositivo: 'Desktop',
+      url: '/dashboard/compras'
+    },
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tk5',
+    titulo: 'Reporte: Precios desactualizados en catálogo',
+    descripcion: 'Varios productos muestran precios que no coinciden con nuestra lista actual. Adjunto lista de SKUs afectados.',
+    categoria: 'reporte',
+    prioridad: 'urgente',
+    estado: 'abierto',
+    userId: 'u2',
+    usuarioNombre: 'Carlos Gerente',
+    metadata: {
+      navegador: 'Safari 17.1',
+      dispositivo: 'iPad',
+      url: '/dashboard/inventario'
+    },
+    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+  }
+];
+
+// Mock ticket comments
+export const mockTicketComments: TicketComment[] = [
+  {
+    id: 'tc1',
+    ticketId: 'tk1',
+    userId: 'u2',
+    usuarioNombre: 'Carlos Gerente',
+    contenido: 'El problema ocurre específicamente cuando selecciono un rango de fechas mayor a 90 días.',
+    esRespuestaOficial: false,
+    createdAt: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tc2',
+    ticketId: 'tk1',
+    userId: 'u1',
+    usuarioNombre: 'Admin Sistema',
+    contenido: 'Gracias por el detalle. Estamos trabajando en optimizar la consulta para rangos grandes. Mientras tanto, intenta dividirlo en periodos más cortos.',
+    esRespuestaOficial: true,
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tc3',
+    ticketId: 'tk2',
+    userId: 'u1',
+    usuarioNombre: 'Admin Sistema',
+    contenido: 'Hola María, puedes usar el botón "Exportar" en la parte superior derecha de la tabla de inventario. Te generará un archivo Excel con todos los datos.',
+    esRespuestaOficial: true,
+    createdAt: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tc4',
+    ticketId: 'tk2',
+    userId: 'u3',
+    usuarioNombre: 'María Cajera',
+    contenido: '¡Perfecto! Ya lo encontré. Muchas gracias.',
+    esRespuestaOficial: false,
+    createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'tc5',
+    ticketId: 'tk3',
+    userId: 'u1',
+    usuarioNombre: 'Admin Sistema',
+    contenido: '¡Excelente sugerencia! Ya implementamos el modo oscuro. Puedes activarlo desde el menú de usuario en la esquina superior derecha.',
+    esRespuestaOficial: true,
+    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+  }
+];
+
+export const getTicketById = (id: string): Ticket | undefined => 
+  mockTickets.find(t => t.id === id);
+
+export const getTicketComments = (ticketId: string): TicketComment[] => 
+  mockTicketComments.filter(c => c.ticketId === ticketId);
+
+export const getTicketsForUser = (userId: string): Ticket[] => 
+  mockTickets.filter(t => t.userId === userId);

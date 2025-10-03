@@ -12,6 +12,7 @@ import PrediccionPage from "./pages/PrediccionPage";
 import EquiposPage from "./pages/EquiposPage";
 import ProveedoresPage from "./pages/ProveedoresPage";
 import ConfiguracionPage from "./pages/ConfiguracionPage";
+import SoportePage from "./pages/SoportePage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -68,6 +69,10 @@ const router = createBrowserRouter([
           {
             path: "configuracion",
             element: <ConfiguracionPage />,
+          },
+          {
+            path: "soporte",
+            element: <SoportePage />,
           },
         ],
       },
