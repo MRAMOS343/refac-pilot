@@ -20,10 +20,20 @@ export default function DashboardPage() {
 
   // Cálculo de KPIs globales del negocio
   const kpisGlobales = useMemo((): KPIData[] => {
-    const ventasTotales = mockSales.reduce((suma, venta) => suma + venta.total, 0);
+    // Filtrar ventas por sucursal
+    const ventasFiltradas = currentWarehouse === 'all' 
+      ? mockSales 
+      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
+    
+    // Filtrar inventario por sucursal
+    const inventarioFiltrado = currentWarehouse === 'all'
+      ? mockInventory
+      : mockInventory.filter(inv => inv.warehouseId === currentWarehouse);
+
+    const ventasTotales = ventasFiltradas.reduce((suma, venta) => suma + venta.total, 0);
     const totalProductos = mockProducts.length;
-    const productosStockBajo = mockInventory.filter(inv => inv.onHand <= 10).length;
-    const ticketPromedio = ventasTotales / mockSales.length;
+    const productosStockBajo = inventarioFiltrado.filter(inv => inv.onHand <= 10).length;
+    const ticketPromedio = ventasFiltradas.length > 0 ? ventasTotales / ventasFiltradas.length : 0;
 
     return [
       {
@@ -55,7 +65,7 @@ export default function DashboardPage() {
         changeType: "negative"
       }
     ];
-  }, []);
+  }, [currentWarehouse]);
 
   // Datos de tendencia de ventas (últimos 7 días) para el gráfico lineal
   const datosTendenciaVentas = useMemo(() => {
@@ -65,9 +75,14 @@ export default function DashboardPage() {
       return fecha.toISOString().split('T')[0];
     });
 
+    // Filtrar ventas por sucursal
+    const ventasFiltradas = currentWarehouse === 'all'
+      ? mockSales
+      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
+
     return ultimos7Dias.map(fecha => {
       // Sumar todas las ventas de ese día específico
-      const totalDia = mockSales
+      const totalDia = ventasFiltradas
         .filter(venta => venta.fechaISO.startsWith(fecha))
         .reduce((suma, venta) => suma + venta.total, 0);
       
@@ -76,11 +91,16 @@ export default function DashboardPage() {
         value: totalDia
       };
     });
-  }, []);
+  }, [currentWarehouse]);
 
   // Distribución de métodos de pago para gráfico circular
   const datosMetodosPago = useMemo(() => {
-    const metodos = mockSales.reduce((acumulador, venta) => {
+    // Filtrar ventas por sucursal
+    const ventasFiltradas = currentWarehouse === 'all'
+      ? mockSales
+      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
+
+    const metodos = ventasFiltradas.reduce((acumulador, venta) => {
       acumulador[venta.metodoPago] = (acumulador[venta.metodoPago] || 0) + 1;
       return acumulador;
     }, {} as Record<string, number>);
@@ -88,13 +108,18 @@ export default function DashboardPage() {
     return Object.entries(metodos).map(([metodo, cantidad]) => ({
       name: metodo.charAt(0).toUpperCase() + metodo.slice(1),
       value: cantidad,
-      percentage: (cantidad / mockSales.length * 100).toFixed(1)
+      percentage: (ventasFiltradas.length > 0 ? (cantidad / ventasFiltradas.length * 100).toFixed(1) : '0.0')
     }));
-  }, []);
+  }, [currentWarehouse]);
 
   // Productos más vendidos por ingresos generados
   const productosMasVendidos = useMemo(() => {
-    const ventasProductos = mockSales.reduce((acumulador, venta) => {
+    // Filtrar ventas por sucursal
+    const ventasFiltradas = currentWarehouse === 'all'
+      ? mockSales
+      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
+
+    const ventasProductos = ventasFiltradas.reduce((acumulador, venta) => {
       venta.items.forEach(item => {
         const producto = mockProducts.find(p => p.id === item.productId);
         if (producto) {
@@ -112,7 +137,7 @@ export default function DashboardPage() {
     return Object.values(ventasProductos)
       .sort((a, b) => b.ingresos - a.ingresos)
       .slice(0, 5);
-  }, []);
+  }, [currentWarehouse]);
 
   // Colores para los gráficos - colores vibrantes diferenciados
   const COLORES = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#F97316'];
