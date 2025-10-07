@@ -201,6 +201,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       });
       onOpenChange(false);
     } catch (error) {
+      console.error('Error al registrar venta:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al registrar la venta.",
@@ -390,6 +391,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                               variant="ghost"
                               size="sm"
                               onClick={() => eliminarProducto(indice)}
+                              aria-label="Eliminar producto"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>

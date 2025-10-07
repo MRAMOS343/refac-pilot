@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { User as UserType } from "@/types";
 
 const mainNavItems = [
   { 
@@ -88,7 +89,7 @@ const mainNavItems = [
 ];
 
 interface AppSidebarProps {
-  currentUser: any;
+  currentUser: UserType | null;
   onLogout: () => void;
 }
 

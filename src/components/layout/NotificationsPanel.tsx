@@ -159,7 +159,12 @@ export function NotificationsPanel() {
         <>
           <Separator />
           <div className="p-2">
-            <Button variant="ghost" className="w-full text-sm" size="sm">
+            <Button 
+              variant="ghost" 
+              className="w-full text-sm" 
+              size="sm"
+              aria-label="Marcar todas las notificaciones como leídas"
+            >
               Marcar todas como leídas
             </Button>
           </div>

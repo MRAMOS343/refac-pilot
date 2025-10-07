@@ -125,6 +125,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
       });
       onOpenChange(false);
     } catch (error) {
+      console.error('Error al guardar producto:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al guardar el producto.",
