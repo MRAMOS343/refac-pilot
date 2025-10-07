@@ -192,6 +192,12 @@
     @apply bg-card border border-border rounded-xl p-6 shadow-sm;
   }
   
+  /* Recharts theming */
+  .recharts-pie .recharts-label tspan,
+  .recharts-pie .recharts-text tspan {
+    fill: hsl(var(--foreground)) !important;
+  }
+  
   .status-badge-success {
     @apply bg-success/10 text-success border border-success/20 rounded-full px-3 py-1 text-sm font-medium;
   }
