@@ -13,6 +13,8 @@ import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X }
 import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
 import { Product, Inventory, User, KPIData } from '../types';
 import { toast } from '@/hooks/use-toast';
+import { exportToCSV } from '@/utils/exportCSV';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface ContextType {
   currentWarehouse: string;
@@ -254,9 +256,24 @@ export default function InventarioPage() {
       return;
     }
     
+    exportToCSV(
+      warehouseInventory.map(inv => ({
+        SKU: inv.product.sku,
+        Producto: inv.product.nombre,
+        Marca: inv.product.marca,
+        Categoria: inv.product.categoria,
+        Stock: inv.onHand,
+        Unidad: inv.product.unidad,
+        Precio: inv.product.precio,
+        Estado: inv.onHand <= inv.product.reorderPoint ? 'Stock Bajo' : 
+                inv.onHand <= inv.product.safetyStock + inv.product.reorderPoint ? 'Stock Medio' : 'Stock Alto'
+      })),
+      `inventario_${currentWarehouse === 'all' ? 'todas_sucursales' : currentWarehouse}_${new Date().toISOString().split('T')[0]}`
+    );
+    
     toast({
-      title: "Exportando...",
-      description: "Los datos se están exportando a CSV.",
+      title: "Exportación exitosa",
+      description: "Los datos se han exportado a CSV correctamente.",
     });
   };
 
@@ -318,7 +335,7 @@ export default function InventarioPage() {
 
         <TabsContent value="warehouse" className="space-y-6">
           {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
             {warehouseKPIs.map((kpi, index) => (
               <KPICard key={index} data={kpi} />
             ))}

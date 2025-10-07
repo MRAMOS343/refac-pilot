@@ -13,6 +13,7 @@ import { Sale, User, KPIData, ChartDataPoint } from '../types';
 import { toast } from '@/hooks/use-toast';
 import { format, startOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { exportToCSV } from '@/utils/exportCSV';
 
 interface ContextType {
   currentWarehouse: string;
@@ -135,6 +136,27 @@ export default function VentasPage() {
     return <Badge variant={variants[metodo]}>{metodo}</Badge>;
   };
 
+  const handleExportCSV = () => {
+    exportToCSV(
+      filteredSales.map(sale => ({
+        ID: sale.id,
+        Fecha: format(new Date(sale.fechaISO), 'dd/MM/yyyy HH:mm', { locale: es }),
+        Vendedor: sale.vendedor || 'Sin asignar',
+        MetodoPago: sale.metodoPago,
+        Subtotal: sale.subtotal,
+        IVA: sale.iva,
+        Total: sale.total,
+        Items: sale.items.length
+      })),
+      `ventas_${dateRange}_${new Date().toISOString().split('T')[0]}`
+    );
+    
+    toast({
+      title: "Exportación exitosa",
+      description: "Los datos de ventas se han exportado a CSV correctamente.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -154,7 +176,7 @@ export default function VentasPage() {
             <Plus className="w-4 h-4 mr-2" />
             Nueva Venta
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
@@ -162,14 +184,14 @@ export default function VentasPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
         {kpis.map((kpi, index) => (
           <KPICard key={index} data={kpi} />
         ))}
       </div>
 
       {/* Chart */}
-      <Card className="chart-card">
+      <Card className="chart-card animate-scale-in">
         <CardHeader>
           <CardTitle>Tendencia de Ventas</CardTitle>
           <CardDescription>

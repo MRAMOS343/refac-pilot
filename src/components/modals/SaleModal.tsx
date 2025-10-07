@@ -325,6 +325,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                       value={busquedaProducto}
                       onChange={(e) => setBusquedaProducto(e.target.value)}
                       className="pl-8"
+                      autoFocus
                     />
                   </div>
                   {busquedaProducto && (

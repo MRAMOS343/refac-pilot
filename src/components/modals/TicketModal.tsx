@@ -126,6 +126,7 @@ export function TicketModal({ open, onOpenChange, ticket, onSubmit }: TicketModa
                   <FormControl>
                     <Input
                       placeholder="Ej: Error al generar reporte de ventas"
+                      autoFocus
                       {...field}
                     />
                   </FormControl>

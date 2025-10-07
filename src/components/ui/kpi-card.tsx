@@ -1,14 +1,17 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { KPIData } from "../../types";
 import { TrendingUp, TrendingDown, Minus, DollarSign, Package, ShoppingCart, AlertTriangle } from "lucide-react";
+
 interface KPICardProps {
   data: KPIData;
   className?: string;
 }
-export function KPICard({
+
+const KPICardComponent = ({
   data,
   className
-}: KPICardProps) {
+}: KPICardProps) => {
   const formatValue = (value: number | string, format?: string) => {
     if (typeof value === 'string') return value;
     switch (format) {
@@ -78,4 +81,7 @@ export function KPICard({
           </div>}
       </div>
     </div>;
-}
+};
+
+// Memoized export for performance
+export const KPICard = memo(KPICardComponent);

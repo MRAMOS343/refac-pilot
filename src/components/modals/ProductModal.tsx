@@ -183,7 +183,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                   <FormItem>
                     <FormLabel>SKU *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: MOT-001" {...field} />
+                      <Input placeholder="Ej: MOT-001" autoFocus {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
