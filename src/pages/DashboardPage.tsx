@@ -114,8 +114,8 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, []);
 
-  // Colores para los gráficos - usar tokens del tema
-  const COLORES = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+  // Colores para los gráficos - colores vibrantes diferenciados
+  const COLORES = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#F97316'];
 
   return (
     <div className="space-y-6 p-6">
