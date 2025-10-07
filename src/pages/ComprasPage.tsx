@@ -24,11 +24,12 @@ export default function ComprasPage() {
   const [leadTimeDias, setLeadTimeDias] = useState<number>(7);
   const [safetyStockPercent, setSafetyStockPercent] = useState<number>(20);
   const [horizonteSemanas, setHorizonteSemanas] = useState<number>(4);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(currentWarehouse);
 
   // Generate purchase suggestions
   const purchaseSuggestions: PurchaseSuggestion[] = useMemo(() => {
-    const warehouseInventory = mockInventory.filter(inv => inv.warehouseId === selectedWarehouse);
+    const warehouseInventory = currentWarehouse === 'all'
+      ? mockInventory
+      : mockInventory.filter(inv => inv.warehouseId === currentWarehouse);
     
     return warehouseInventory
       .map(inv => {
@@ -86,7 +87,7 @@ export default function ComprasPage() {
         // Sort by urgency (lower coverage days first)
         return a.coberturaDias - b.coberturaDias;
       });
-  }, [selectedWarehouse, leadTimeDias, safetyStockPercent, horizonteSemanas, searchQuery]);
+  }, [currentWarehouse, leadTimeDias, safetyStockPercent, horizonteSemanas, searchQuery]);
 
   // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
@@ -175,23 +176,7 @@ export default function ComprasPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="warehouse">Sucursal</Label>
-              <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockWarehouses.map(warehouse => (
-                    <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="leadTime">Lead Time (días)</Label>
               <Input
@@ -273,7 +258,11 @@ export default function ComprasPage() {
             <div>
               <CardTitle>Sugerencias de Compra</CardTitle>
               <CardDescription>
-                Productos que requieren reabastecimiento en {getWarehouseById(selectedWarehouse)?.nombre}
+                Productos que requieren reabastecimiento en {
+                  currentWarehouse === 'all' 
+                    ? 'todas las sucursales' 
+                    : getWarehouseById(currentWarehouse)?.nombre || 'Sucursal desconocida'
+                }
               </CardDescription>
             </div>
           </div>
