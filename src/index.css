@@ -79,6 +79,12 @@
     --shadow-lg: 0 10px 15px -3px hsl(var(--primary) / 0.1), 0 4px 6px -2px hsl(var(--primary) / 0.05);
     --shadow-xl: 0 20px 25px -5px hsl(var(--primary) / 0.1), 0 10px 10px -5px hsl(var(--primary) / 0.04);
 
+    /* Chart colors */
+    --chart-1: 214 84% 56%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 45 93% 47%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 25 95% 53%;
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -143,6 +149,13 @@
     --input: 220 20% 15%;
     --ring: 214 84% 56%;
     
+    /* Chart colors for dark mode */
+    --chart-1: 214 84% 56%;
+    --chart-2: 142 76% 45%;
+    --chart-3: 45 93% 55%;
+    --chart-4: 0 84% 65%;
+    --chart-5: 25 95% 60%;
+
     /* Dark mode sidebar */
     --sidebar-background: 220 20% 8%;
     --sidebar-foreground: 0 0% 90%;
