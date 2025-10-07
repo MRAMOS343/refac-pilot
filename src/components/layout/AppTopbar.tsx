@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Search, Moon, Sun, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +17,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Warehouse, User } from "../../types";
+import { NotificationsPanel } from "./NotificationsPanel";
 
 interface AppTopbarProps {
   breadcrumbs: Array<{ label: string; href?: string }>;
@@ -43,6 +50,8 @@ export function AppTopbar({
   isDarkMode,
   onToggleDarkMode,
 }: AppTopbarProps) {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin': return 'default';
@@ -147,9 +156,21 @@ export function AppTopbar({
             )}
           </Button>
 
-          <Button variant="ghost" size="icon" aria-label="Notificaciones">
-            <Bell className="h-4 w-4" />
-          </Button>
+          <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Notificaciones" className="relative">
+                <Bell className="h-4 w-4" />
+                <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-80 p-0 bg-card border-border shadow-lg" 
+              align="end"
+              sideOffset={8}
+            >
+              <NotificationsPanel />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </header>
