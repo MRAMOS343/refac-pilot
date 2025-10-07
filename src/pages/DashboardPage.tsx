@@ -367,26 +367,26 @@ export default function DashboardPage() {
                 <Badge variant="destructive">Urgente</Badge>
               </div>
               
-              <div className="flex items-center gap-3 p-3 border border-yellow-200 rounded-lg bg-yellow-50 dark:bg-yellow-950/20">
-                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <div className="flex items-center gap-3 p-3 border border-warning/20 rounded-lg bg-warning/5">
+                <AlertTriangle className="w-5 h-5 text-warning" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Ventas en Declive</p>
                   <p className="text-xs text-muted-foreground">
                     El ticket promedio ha disminuido 1.2% esta semana
                   </p>
                 </div>
-                <Badge variant="secondary">Info</Badge>
+                <Badge variant="warning">Info</Badge>
               </div>
 
-              <div className="flex items-center gap-3 p-3 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+              <div className="flex items-center gap-3 p-3 border border-info/20 rounded-lg bg-info/5">
+                <TrendingUp className="w-5 h-5 text-info" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Crecimiento Positivo</p>
                   <p className="text-xs text-muted-foreground">
                     Las ventas totales han aumentado 12.5% este mes
                   </p>
                 </div>
-                <Badge className="bg-blue-100 text-blue-700">Good</Badge>
+                <Badge variant="info">Good</Badge>
               </div>
             </div>
           </CardContent>
