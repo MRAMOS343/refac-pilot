@@ -10,6 +10,9 @@ import { TrendingUp, ShoppingCart, Package, DollarSign, AlertTriangle, Plus } fr
 import { Sale, User, KPIData } from "@/types";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { toast } from "@/hooks/use-toast";
+import { kpiService } from "@/services/kpiService";
+import { filterService } from "@/services/filterService";
+import { COLORES_GRAFICOS } from "@/constants";
 
 interface ContextType {
   currentWarehouse: string;
@@ -22,53 +25,12 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [productModalOpen, setProductModalOpen] = useState(false);
 
-  // Cálculo de KPIs globales del negocio
+  // Cálculo de KPIs globales del negocio usando servicio
   const kpisGlobales = useMemo((): KPIData[] => {
-    // Filtrar ventas por sucursal
-    const ventasFiltradas = currentWarehouse === 'all' 
-      ? mockSales 
-      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(mockSales, currentWarehouse);
+    const inventarioFiltrado = filterService.filterInventoryByWarehouse(mockInventory, currentWarehouse);
     
-    // Filtrar inventario por sucursal
-    const inventarioFiltrado = currentWarehouse === 'all'
-      ? mockInventory
-      : mockInventory.filter(inv => inv.warehouseId === currentWarehouse);
-
-    const ventasTotales = ventasFiltradas.reduce((suma, venta) => suma + venta.total, 0);
-    const totalProductos = mockProducts.length;
-    const productosStockBajo = inventarioFiltrado.filter(inv => inv.onHand <= 10).length;
-    const ticketPromedio = ventasFiltradas.length > 0 ? ventasTotales / ventasFiltradas.length : 0;
-
-    return [
-      {
-        label: "Ventas Totales",
-        value: ventasTotales,
-        format: "currency",
-        change: 12.5,
-        changeType: "positive"
-      },
-      {
-        label: "Productos Únicos",
-        value: totalProductos,
-        format: "number",
-        change: 2.1,
-        changeType: "positive"
-      },
-      {
-        label: "Ticket Promedio",
-        value: ticketPromedio,
-        format: "currency",
-        change: -1.2,
-        changeType: "negative"
-      },
-      {
-        label: "Stock Bajo",
-        value: productosStockBajo,
-        format: "number",
-        change: 5.3,
-        changeType: "negative"
-      }
-    ];
+    return kpiService.calculateGlobalKPIs(ventasFiltradas, inventarioFiltrado);
   }, [currentWarehouse]);
 
   // Datos de tendencia de ventas (últimos 7 días) para el gráfico lineal
@@ -97,54 +59,17 @@ export default function DashboardPage() {
     });
   }, [currentWarehouse]);
 
-  // Distribución de métodos de pago para gráfico circular
+  // Distribución de métodos de pago usando servicio
   const datosMetodosPago = useMemo(() => {
-    // Filtrar ventas por sucursal
-    const ventasFiltradas = currentWarehouse === 'all'
-      ? mockSales
-      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
-
-    const metodos = ventasFiltradas.reduce((acumulador, venta) => {
-      acumulador[venta.metodoPago] = (acumulador[venta.metodoPago] || 0) + 1;
-      return acumulador;
-    }, {} as Record<string, number>);
-
-    return Object.entries(metodos).map(([metodo, cantidad]) => ({
-      name: metodo.charAt(0).toUpperCase() + metodo.slice(1),
-      value: cantidad,
-      percentage: (ventasFiltradas.length > 0 ? (cantidad / ventasFiltradas.length * 100).toFixed(1) : '0.0')
-    }));
+    const ventasFiltradas = filterService.filterSalesByWarehouse(mockSales, currentWarehouse);
+    return kpiService.calculatePaymentMethodDistribution(ventasFiltradas);
   }, [currentWarehouse]);
 
-  // Productos más vendidos por ingresos generados
+  // Productos más vendidos usando servicio
   const productosMasVendidos = useMemo(() => {
-    // Filtrar ventas por sucursal
-    const ventasFiltradas = currentWarehouse === 'all'
-      ? mockSales
-      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
-
-    const ventasProductos = ventasFiltradas.reduce((acumulador, venta) => {
-      venta.items.forEach(item => {
-        const producto = mockProducts.find(p => p.id === item.productId);
-        if (producto) {
-          if (!acumulador[producto.id]) {
-            acumulador[producto.id] = { producto, totalVendido: 0, ingresos: 0 };
-          }
-          acumulador[producto.id].totalVendido += item.qty;
-          acumulador[producto.id].ingresos += item.qty * item.unitPrice;
-        }
-      });
-      return acumulador;
-    }, {} as Record<string, { producto: any; totalVendido: number; ingresos: number }>);
-
-    // Ordenar por ingresos y tomar los top 5
-    return Object.values(ventasProductos)
-      .sort((a, b) => b.ingresos - a.ingresos)
-      .slice(0, 5);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(mockSales, currentWarehouse);
+    return kpiService.calculateTopProducts(ventasFiltradas, 5);
   }, [currentWarehouse]);
-
-  // Colores para los gráficos - colores vibrantes diferenciados
-  const COLORES = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#F97316'];
 
   const handleNewSale = () => {
     navigate('/dashboard/ventas');
@@ -279,7 +204,7 @@ export default function DashboardPage() {
                   }}
                 >
                   {datosMetodosPago.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORES[index % COLORES.length]} />
+                    <Cell key={`cell-${index}`} fill={COLORES_GRAFICOS[index % COLORES_GRAFICOS.length]} />
                   ))}
                 </Pie>
                 <Tooltip 

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -29,19 +28,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Ticket, TicketCategory, TicketPriority } from '@/types';
-
-const ticketSchema = z.object({
-  titulo: z.string()
-    .min(10, 'El título debe tener al menos 10 caracteres')
-    .max(100, 'El título no puede exceder 100 caracteres'),
-  descripcion: z.string()
-    .min(20, 'La descripción debe tener al menos 20 caracteres')
-    .max(1000, 'La descripción no puede exceder 1000 caracteres'),
-  categoria: z.enum(['bug', 'consulta', 'sugerencia', 'soporte', 'reporte']),
-  prioridad: z.enum(['baja', 'media', 'alta', 'urgente']),
-});
-
-type TicketFormData = z.infer<typeof ticketSchema>;
+import { ticketSchema, TicketFormData } from '@/schemas';
+import { TICKET_CATEGORIAS, TICKET_PRIORIDADES } from '@/constants';
 
 interface TicketModalProps {
   open: boolean;

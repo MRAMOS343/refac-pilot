@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -30,43 +29,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Product } from "@/types";
-
-const productSchema = z.object({
-  sku: z.string()
-    .min(1, "SKU es requerido")
-    .max(50, "SKU debe tener máximo 50 caracteres")
-    .regex(/^[A-Z0-9-]+$/i, "SKU solo puede contener letras, números y guiones")
-    .trim(),
-  nombre: z.string()
-    .min(1, "Nombre es requerido")
-    .max(200, "Nombre debe tener máximo 200 caracteres")
-    .trim(),
-  marca: z.string()
-    .min(1, "Marca es requerida")
-    .max(100, "Marca debe tener máximo 100 caracteres")
-    .trim(),
-  categoria: z.string().min(1, "Categoría es requerida"),
-  unidad: z.string().min(1, "Unidad es requerida"),
-  precio: z.number()
-    .min(0.01, "El precio debe ser mayor a 0")
-    .max(999999.99, "El precio excede el límite permitido"),
-  iva: z.number()
-    .min(0, "IVA no puede ser negativo")
-    .max(100, "IVA no puede ser mayor a 100%"),
-  reorderPoint: z.number()
-    .int("Punto de reorden debe ser un número entero")
-    .min(0, "Punto de reorden no puede ser negativo")
-    .max(9999, "Punto de reorden excede el límite"),
-  safetyStock: z.number()
-    .int("Stock de seguridad debe ser un número entero")
-    .min(0, "Stock de seguridad no puede ser negativo")
-    .max(9999, "Stock de seguridad excede el límite"),
-  descripcion: z.string()
-    .max(500, "Descripción debe tener máximo 500 caracteres")
-    .optional(),
-});
-
-type ProductFormData = z.infer<typeof productSchema>;
+import { productSchema, ProductFormData } from "@/schemas";
+import { CATEGORIAS_PRODUCTO, UNIDADES_MEDIDA, IVA_PREDETERMINADO } from "@/constants";
 
 interface ProductModalProps {
   open: boolean;
@@ -74,15 +38,6 @@ interface ProductModalProps {
   product?: Product | null;
   onSave: (product: ProductFormData) => void;
 }
-
-const categorias = [
-  "Motor", "Suspensión", "Frenos", "Transmisión", "Eléctrico", 
-  "Carrocería", "Filtros", "Lubricantes", "Llantas", "Accesorios"
-];
-
-const unidades = [
-  "pza", "kit", "par", "litro", "galón", "metro", "caja", "juego"
-];
 
 export function ProductModal({ open, onOpenChange, product, onSave }: ProductModalProps) {
   const { toast } = useToast();
@@ -95,9 +50,9 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
       nombre: "",
       marca: "",
       categoria: "",
-      unidad: "pza",
+      unidad: UNIDADES_MEDIDA[0],
       precio: 0,
-      iva: 16,
+      iva: IVA_PREDETERMINADO,
       reorderPoint: 10,
       safetyStock: 5,
       descripcion: "",
@@ -126,9 +81,9 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
           nombre: "",
           marca: "",
           categoria: "",
-          unidad: "pza",
+          unidad: UNIDADES_MEDIDA[0],
           precio: 0,
-          iva: 16,
+          iva: IVA_PREDETERMINADO,
           reorderPoint: 10,
           safetyStock: 5,
           descripcion: "",
@@ -203,7 +158,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {unidades.map((unidad) => (
+                        {UNIDADES_MEDIDA.map((unidad) => (
                           <SelectItem key={unidad} value={unidad}>
                             {unidad}
                           </SelectItem>
@@ -258,7 +213,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categorias.map((categoria) => (
+                        {CATEGORIAS_PRODUCTO.map((categoria) => (
                           <SelectItem key={categoria} value={categoria}>
                             {categoria}
                           </SelectItem>

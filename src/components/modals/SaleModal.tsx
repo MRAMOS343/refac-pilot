@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   Dialog,
@@ -41,39 +40,15 @@ import { useToast } from "@/hooks/use-toast";
 import { mockProducts } from "@/data/mockData";
 import { Product, SaleItem } from "@/types";
 import { Trash2, Plus, Search } from "lucide-react";
-
-// Esquema de validación para cada producto en la venta
-const esquemaProductoVenta = z.object({
-  productId: z.string().min(1, "Producto es requerido"),
-  qty: z.number()
-    .int("La cantidad debe ser un número entero")
-    .min(1, "La cantidad debe ser mayor a 0")
-    .max(9999, "La cantidad no puede exceder 9999 unidades"),
-  unitPrice: z.number()
-    .min(0.01, "El precio debe ser mayor a 0")
-    .max(999999.99, "El precio excede el límite permitido"),
-  discount: z.number()
-    .min(0, "El descuento no puede ser negativo")
-    .max(100, "El descuento no puede ser mayor a 100%")
-    .optional(),
-});
-
-// Esquema principal de validación para la venta completa
-const esquemaVenta = z.object({
-  metodoPago: z.enum(['efectivo', 'tarjeta', 'transferencia', 'credito'], {
-    required_error: "Método de pago es requerido",
-  }),
-  cliente: z.string().max(100, "Nombre del cliente debe tener máximo 100 caracteres").optional(),
-  items: z.array(esquemaProductoVenta).min(1, "Debe agregar al menos un producto"),
-});
-
-type DatosFormularioVenta = z.infer<typeof esquemaVenta>;
+import { saleSchema, SaleFormData } from "@/schemas";
+import { METODOS_PAGO, IVA_PREDETERMINADO } from "@/constants";
+import { formatCurrency } from "@/utils/formatters";
 
 interface SaleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   warehouseId: string;
-  onSave: (sale: DatosFormularioVenta) => void;
+  onSave: (sale: SaleFormData) => void;
 }
 
 export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModalProps) {
@@ -86,8 +61,8 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   const busquedaDebounced = useDebounce(busquedaProducto, 300);
 
   // Configuración del formulario con validación
-  const formulario = useForm<DatosFormularioVenta>({
-    resolver: zodResolver(esquemaVenta),
+  const formulario = useForm<SaleFormData>({
+    resolver: zodResolver(saleSchema),
     defaultValues: {
       metodoPago: 'efectivo',
       cliente: "",
@@ -116,7 +91,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       return suma + (totalProducto - (totalProducto * descuento / 100));
     }, 0);
     
-    const iva = subtotal * 0.16; // 16% IVA
+    const iva = subtotal * (IVA_PREDETERMINADO / 100);
     const total = subtotal + iva;
 
     return { subtotal, iva, total };
@@ -219,7 +194,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     setProductos(productosActualizados);
   };
 
-  const enviarFormulario = async (datos: DatosFormularioVenta) => {
+  const enviarFormulario = async (datos: SaleFormData) => {
     if (productos.length === 0) {
       toast({
         title: "Error",
@@ -238,7 +213,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       await onSave(datosVenta);
       toast({
         title: "Venta registrada",
-        description: `Venta por ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totales.total)} registrada exitosamente.`,
+        description: `Venta por ${formatCurrency(totales.total)} registrada exitosamente.`,
       });
       onOpenChange(false);
     } catch (error) {
@@ -285,10 +260,11 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                        <SelectItem value="transferencia">Transferencia</SelectItem>
-                        <SelectItem value="credito">Crédito</SelectItem>
+                        {METODOS_PAGO.map((metodo) => (
+                          <SelectItem key={metodo} value={metodo}>
+                            {metodo.charAt(0).toUpperCase() + metodo.slice(1)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
