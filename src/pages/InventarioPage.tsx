@@ -12,9 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X } from 'lucide-react';
 import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
 import { Product, Inventory, User, KPIData } from '../types';
-import { toast } from '@/hooks/use-toast';
 import { exportToCSV } from '@/utils/exportCSV';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { KPISkeleton } from '@/components/ui/kpi-skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelpers';
 
 interface ContextType {
   currentWarehouse: string;
@@ -32,6 +35,7 @@ export default function InventarioPage() {
   const [selectedCategoria, setSelectedCategoria] = useState<string>('all');
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const { isLoading } = useLoadingState({ minLoadingTime: 600 });
 
   // Get unique brands and categories for filters
   const marcas = [...new Set(mockProducts.map(p => p.marca))];
@@ -234,25 +238,15 @@ export default function InventarioPage() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     if (editingProduct) {
-      toast({
-        title: "Producto actualizado",
-        description: `${productData.nombre} ha sido actualizado exitosamente.`,
-      });
+      showSuccessToast("Producto actualizado", `${productData.nombre} ha sido actualizado exitosamente.`);
     } else {
-      toast({
-        title: "Producto creado",
-        description: `${productData.nombre} ha sido creado exitosamente.`,
-      });
+      showSuccessToast("Producto creado", `${productData.nombre} ha sido creado exitosamente.`);
     }
   };
 
   const handleExportCSV = () => {
     if (currentUser.role === 'cajero') {
-      toast({
-        title: "Acceso denegado",
-        description: "No tienes permisos para exportar datos.",
-        variant: "destructive",
-      });
+      showErrorToast("Acceso denegado", "No tienes permisos para exportar datos.");
       return;
     }
     
@@ -271,26 +265,16 @@ export default function InventarioPage() {
       `inventario_${currentWarehouse === 'all' ? 'todas_sucursales' : currentWarehouse}_${new Date().toISOString().split('T')[0]}`
     );
     
-    toast({
-      title: "Exportación exitosa",
-      description: "Los datos se han exportado a CSV correctamente.",
-    });
+    showSuccessToast("Exportación exitosa", "Los datos se han exportado a CSV correctamente.");
   };
 
   const handleImportCSV = () => {
     if (currentUser.role === 'cajero') {
-      toast({
-        title: "Acceso denegado",
-        description: "No tienes permisos para importar datos.",
-        variant: "destructive",
-      });
+      showErrorToast("Acceso denegado", "No tienes permisos para importar datos.");
       return;
     }
     
-    toast({
-      title: "Función no disponible",
-      description: "La importación CSV estará disponible próximamente.",
-    });
+    showSuccessToast("Función no disponible", "La importación CSV estará disponible próximamente.");
   };
 
   const clearFilters = () => {
@@ -312,15 +296,15 @@ export default function InventarioPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
+          <Button variant="outline" onClick={handleExportCSV} className="btn-hover">
             <Download className="w-4 h-4 mr-2" />
             Exportar CSV
           </Button>
-          <Button variant="outline" onClick={handleImportCSV}>
+          <Button variant="outline" onClick={handleImportCSV} className="btn-hover">
             <Upload className="w-4 h-4 mr-2" />
             Importar CSV
           </Button>
-          <Button onClick={handleCreateProduct}>
+          <Button onClick={handleCreateProduct} className="btn-hover">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Producto
           </Button>
@@ -335,10 +319,19 @@ export default function InventarioPage() {
 
         <TabsContent value="warehouse" className="space-y-6">
           {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
-            {warehouseKPIs.map((kpi, index) => (
-              <KPICard key={index} data={kpi} />
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {isLoading ? (
+              <>
+                <KPISkeleton />
+                <KPISkeleton />
+                <KPISkeleton />
+                <KPISkeleton />
+              </>
+            ) : (
+              warehouseKPIs.map((kpi, index) => (
+                <KPICard key={index} data={kpi} className="animate-fade-in card-hover" />
+              ))
+            )}
           </div>
 
           {/* Filters */}
@@ -401,7 +394,7 @@ export default function InventarioPage() {
           </Card>
 
           {/* Inventory Table */}
-          <Card>
+          <Card className="card-hover animate-fade-in">
             <CardHeader>
               <CardTitle>Productos en Inventario</CardTitle>
               <CardDescription>
@@ -413,14 +406,18 @@ export default function InventarioPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DataTable
-                data={warehouseInventory}
-                columns={inventoryColumns}
-                searchable={true}
-                searchPlaceholder="Buscar por nombre, SKU o marca..."
-                emptyMessage="No hay productos en inventario"
-                emptyDescription="No se encontraron productos que coincidan con los filtros aplicados"
-              />
+              {isLoading ? (
+                <TableSkeleton rows={5} columns={7} />
+              ) : (
+                <DataTable
+                  data={warehouseInventory}
+                  columns={inventoryColumns}
+                  searchable={true}
+                  searchPlaceholder="Buscar por nombre, SKU o marca..."
+                  emptyMessage="No hay productos en inventario"
+                  emptyDescription="No se encontraron productos que coincidan con los filtros aplicados"
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

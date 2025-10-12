@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { mockTeams, mockWarehouses } from "@/data/mockData";
 import { Team } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useLoadingState } from "@/hooks/useLoadingState";
+import { EmptyState } from "@/components/ui/empty-state";
+import { showSuccessToast, showErrorToast } from "@/utils/toastHelpers";
 
 export default function EquiposPage() {
   const [teams, setTeams] = useState<Team[]>(mockTeams);
@@ -24,6 +26,7 @@ export default function EquiposPage() {
     miembros: "",
     warehouseId: ""
   });
+  const { isLoading } = useLoadingState({ minLoadingTime: 500 });
 
   const filteredTeams = teams.filter(team =>
     team.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,7 +58,7 @@ export default function EquiposPage() {
 
   const handleSaveTeam = () => {
     if (!formData.nombre.trim()) {
-      toast.error("El nombre del equipo es requerido");
+      showErrorToast("El nombre del equipo es requerido");
       return;
     }
 
@@ -77,7 +80,7 @@ export default function EquiposPage() {
             }
           : t
       ));
-      toast.success("Equipo actualizado correctamente");
+      showSuccessToast("Equipo actualizado correctamente");
     } else {
       const newTeam: Team = {
         id: `t${teams.length + 1}`,
@@ -89,7 +92,7 @@ export default function EquiposPage() {
         fechaCreacion: new Date().toISOString().split('T')[0]
       };
       setTeams([...teams, newTeam]);
-      toast.success("Equipo creado correctamente");
+      showSuccessToast("Equipo creado correctamente");
     }
 
     setIsDialogOpen(false);
@@ -97,7 +100,7 @@ export default function EquiposPage() {
 
   const handleDeleteTeam = (teamId: string) => {
     setTeams(teams.filter(t => t.id !== teamId));
-    toast.success("Equipo eliminado correctamente");
+    showSuccessToast("Equipo eliminado correctamente");
   };
 
   return (
@@ -109,7 +112,7 @@ export default function EquiposPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
+            <Button onClick={() => handleOpenDialog()} className="btn-hover">
               <Plus className="w-4 h-4 mr-2" />
               Crear Equipo
             </Button>
@@ -176,10 +179,10 @@ export default function EquiposPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="btn-hover">
                 Cancelar
               </Button>
-              <Button onClick={handleSaveTeam}>
+              <Button onClick={handleSaveTeam} className="btn-hover">
                 {editingTeam ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>
@@ -203,8 +206,15 @@ export default function EquiposPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTeams.map((team) => (
-          <Card key={team.id} className="hover:shadow-lg transition-shadow">
+        {isLoading ? (
+          <>
+            <Card className="animate-pulse"><CardContent className="h-64" /></Card>
+            <Card className="animate-pulse"><CardContent className="h-64" /></Card>
+            <Card className="animate-pulse"><CardContent className="h-64" /></Card>
+          </>
+        ) : (
+          filteredTeams.map((team) => (
+            <Card key={team.id} className="card-hover hover:shadow-lg transition-shadow animate-fade-in">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -265,7 +275,7 @@ export default function EquiposPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 btn-hover"
                   onClick={() => handleOpenDialog(team)}
                 >
                   <Edit className="w-3 h-3 mr-1" />
@@ -274,6 +284,7 @@ export default function EquiposPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="btn-hover"
                   onClick={() => handleDeleteTeam(team.id)}
                 >
                   <Trash2 className="w-3 h-3" />
@@ -281,19 +292,20 @@ export default function EquiposPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          ))
+        )}
       </div>
 
-      {filteredTeams.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium text-foreground">No se encontraron equipos</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {searchTerm ? "Intenta con otro término de búsqueda" : "Crea tu primer equipo para comenzar"}
-            </p>
-          </CardContent>
-        </Card>
+      {filteredTeams.length === 0 && !isLoading && (
+        <EmptyState
+          icon={Users}
+          title="No se encontraron equipos"
+          description={searchTerm ? "Intenta con otro término de búsqueda" : "Crea tu primer equipo para comenzar"}
+          action={{
+            label: "Crear equipo",
+            onClick: () => handleOpenDialog()
+          }}
+        />
       )}
     </div>
   );

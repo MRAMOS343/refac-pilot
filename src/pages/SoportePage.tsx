@@ -11,13 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { mockTickets, mockTicketComments } from '@/data/mockData';
 import { Ticket, TicketStatus, TicketPriority, TicketCategory } from '@/types';
 import { Plus, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { KPISkeleton } from '@/components/ui/kpi-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { showInfoToast } from '@/utils/toastHelpers';
 
 export default function SoportePage() {
   const { currentUser } = useAuth();
   const [tickets, setTickets] = useLocalStorage('autoparts_tickets', mockTickets);
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | undefined>();
+  const { isLoading } = useLoadingState({ minLoadingTime: 500 });
 
   // Filtros
   const [searchQuery, setSearchQuery] = useState('');
@@ -87,10 +91,7 @@ export default function SoportePage() {
   };
 
   const handleTicketClick = (ticket: Ticket) => {
-    toast({
-      title: ticket.titulo,
-      description: `Estado: ${ticket.estado} | Prioridad: ${ticket.prioridad}`,
-    });
+    showInfoToast(ticket.titulo, `Estado: ${ticket.estado} | Prioridad: ${ticket.prioridad}`);
   };
 
   const handleClearFilters = () => {
@@ -110,7 +111,7 @@ export default function SoportePage() {
             Gestiona tus tickets y consultas
           </p>
         </div>
-        <Button onClick={() => setTicketModalOpen(true)} className="gap-2">
+        <Button onClick={() => setTicketModalOpen(true)} className="gap-2 btn-hover">
           <Plus className="h-4 w-4" />
           Nuevo Ticket
         </Button>
@@ -118,45 +119,56 @@ export default function SoportePage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
+        {isLoading ? (
+          <>
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+          </>
+        ) : (
+          <>
+            <Card className="card-hover animate-fade-in">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.total}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Abiertos</CardTitle>
-            <AlertCircle className="h-4 w-4 text-info" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.abiertos}</div>
-          </CardContent>
-        </Card>
+            <Card className="card-hover animate-fade-in">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Abiertos</CardTitle>
+                <AlertCircle className="h-4 w-4 text-info" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.abiertos}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">En Progreso</CardTitle>
-            <Clock className="h-4 w-4 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.enProgreso}</div>
-          </CardContent>
-        </Card>
+            <Card className="card-hover animate-fade-in">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">En Progreso</CardTitle>
+                <Clock className="h-4 w-4 text-warning" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.enProgreso}</div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resueltos</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.resueltos}</div>
-          </CardContent>
-        </Card>
+            <Card className="card-hover animate-fade-in">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Resueltos</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.resueltos}</div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Filters */}
@@ -173,7 +185,7 @@ export default function SoportePage() {
       />
 
       {/* Tickets List */}
-      <Card>
+      <Card className="card-hover animate-fade-in">
         <CardHeader>
           <CardTitle>
             Tickets ({filteredTickets.length})
@@ -186,15 +198,19 @@ export default function SoportePage() {
         </CardHeader>
         <CardContent>
           {filteredTickets.length === 0 ? (
-            <div className="text-center py-12">
-              <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold">No hay tickets</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {searchQuery || statusFilter !== 'todos' || priorityFilter !== 'todos' || categoryFilter !== 'todos'
+            <EmptyState
+              icon={AlertCircle}
+              title="No hay tickets"
+              description={
+                searchQuery || statusFilter !== 'todos' || priorityFilter !== 'todos' || categoryFilter !== 'todos'
                   ? 'No se encontraron tickets con los filtros aplicados.'
-                  : 'Crea tu primer ticket para empezar.'}
-              </p>
-            </div>
+                  : 'Crea tu primer ticket para empezar.'
+              }
+              action={{
+                label: "Crear ticket",
+                onClick: () => setTicketModalOpen(true)
+              }}
+            />
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filteredTickets.map((ticket) => (

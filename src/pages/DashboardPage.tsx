@@ -9,10 +9,13 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { TrendingUp, ShoppingCart, Package, DollarSign, AlertTriangle, Plus } from "lucide-react";
 import { Sale, User, KPIData } from "@/types";
 import { ProductModal } from "@/components/modals/ProductModal";
-import { toast } from "@/hooks/use-toast";
 import { kpiService } from "@/services/kpiService";
 import { filterService } from "@/services/filterService";
 import { COLORES_GRAFICOS } from "@/constants";
+import { useLoadingState } from "@/hooks/useLoadingState";
+import { KPISkeleton } from "@/components/ui/kpi-skeleton";
+import { ChartSkeleton } from "@/components/ui/chart-skeleton";
+import { showSuccessToast } from "@/utils/toastHelpers";
 
 interface ContextType {
   currentWarehouse: string;
@@ -24,6 +27,7 @@ export default function DashboardPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
   const navigate = useNavigate();
   const [productModalOpen, setProductModalOpen] = useState(false);
+  const { isLoading } = useLoadingState({ minLoadingTime: 600 });
 
   // Cálculo de KPIs globales del negocio usando servicio
   const kpisGlobales = useMemo((): KPIData[] => {
@@ -81,10 +85,7 @@ export default function DashboardPage() {
 
   const handleSaveProduct = async (productData: any) => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    toast({
-      title: "Producto creado",
-      description: `${productData.nombre} ha sido creado exitosamente.`,
-    });
+    showSuccessToast("Producto creado", `${productData.nombre} ha sido creado exitosamente.`);
     setProductModalOpen(false);
   };
 
@@ -103,11 +104,11 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleNewSale}>
+          <Button onClick={handleNewSale} className="btn-hover">
             <Plus className="w-4 h-4 mr-2" />
             Nueva Venta
           </Button>
-          <Button variant="outline" onClick={handleAddProduct}>
+          <Button variant="outline" onClick={handleAddProduct} className="btn-hover">
             <Package className="w-4 h-4 mr-2" />
             Agregar Producto
           </Button>
@@ -116,20 +117,36 @@ export default function DashboardPage() {
 
       {/* Indicadores clave de rendimiento (KPIs) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpisGlobales.map((kpi, index) => (
-          <KPICard key={index} data={kpi} className="animate-fade-in" />
-        ))}
+        {isLoading ? (
+          <>
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+          </>
+        ) : (
+          kpisGlobales.map((kpi, index) => (
+            <KPICard key={index} data={kpi} className="animate-fade-in card-hover" />
+          ))
+        )}
       </div>
 
       {/* Fila de gráficos principales */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de tendencia de ventas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Tendencia de Ventas (7 días)
-            </CardTitle>
+        {isLoading ? (
+          <>
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </>
+        ) : (
+          <>
+            {/* Gráfico de tendencia de ventas */}
+            <Card className="card-hover animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Tendencia de Ventas (7 días)
+                </CardTitle>
             <CardDescription>
               Evolución de las ventas en los últimos 7 días
             </CardDescription>
@@ -163,9 +180,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Gráfico de métodos de pago */}
-        <Card>
-          <CardHeader>
+            {/* Gráfico de métodos de pago */}
+            <Card className="card-hover animate-fade-in">
+              <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
               Métodos de Pago
@@ -225,12 +242,14 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Sección inferior con información adicional */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Productos más vendidos */}
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
@@ -266,7 +285,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Sistema de alertas */}
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />

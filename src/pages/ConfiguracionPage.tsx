@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
 import { User, Building2, Package, Shield, Settings, Bell } from "lucide-react";
+import { showSuccessToast } from "@/utils/toastHelpers";
 
 export default function ConfiguracionPage() {
   const { currentUser, updateUserRole } = useAuth();
@@ -45,31 +45,19 @@ export default function ConfiguracionPage() {
   });
 
   const handleSaveProfile = () => {
-    toast({
-      title: "Perfil actualizado",
-      description: "Los cambios se han guardado correctamente.",
-    });
+    showSuccessToast("Perfil actualizado", "Los cambios se han guardado correctamente.");
   };
 
   const handleSaveCompany = () => {
-    toast({
-      title: "Configuración de empresa actualizada",
-      description: "Los cambios se han guardado correctamente.",
-    });
+    showSuccessToast("Configuración de empresa actualizada", "Los cambios se han guardado correctamente.");
   };
 
   const handleSaveInventory = () => {
-    toast({
-      title: "Configuración de inventario actualizada",
-      description: "Los cambios se han guardado correctamente.",
-    });
+    showSuccessToast("Configuración de inventario actualizada", "Los cambios se han guardado correctamente.");
   };
 
   const handleSaveNotifications = () => {
-    toast({
-      title: "Preferencias de notificaciones actualizadas",
-      description: "Los cambios se han guardado correctamente.",
-    });
+    showSuccessToast("Preferencias de notificaciones actualizadas", "Los cambios se han guardado correctamente.");
   };
 
   return (
@@ -156,7 +144,7 @@ export default function ConfiguracionPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleSaveProfile}>Guardar cambios</Button>
+              <Button onClick={handleSaveProfile} className="btn-hover">Guardar cambios</Button>
             </CardContent>
           </Card>
 
@@ -216,7 +204,7 @@ export default function ConfiguracionPage() {
                   onCheckedChange={(checked) => setNotifications({ ...notifications, reportesDiarios: checked })}
                 />
               </div>
-              <Button onClick={handleSaveNotifications}>Guardar preferencias</Button>
+              <Button onClick={handleSaveNotifications} className="btn-hover">Guardar preferencias</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -266,7 +254,7 @@ export default function ConfiguracionPage() {
                   rows={3}
                 />
               </div>
-              <Button onClick={handleSaveCompany}>Guardar cambios</Button>
+              <Button onClick={handleSaveCompany} className="btn-hover">Guardar cambios</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -316,7 +304,7 @@ export default function ConfiguracionPage() {
                   Ejemplo: AUTO-#### genera códigos como AUTO-0001
                 </p>
               </div>
-              <Button onClick={handleSaveInventory}>Guardar configuración</Button>
+              <Button onClick={handleSaveInventory} className="btn-hover">Guardar configuración</Button>
             </CardContent>
           </Card>
         </TabsContent>

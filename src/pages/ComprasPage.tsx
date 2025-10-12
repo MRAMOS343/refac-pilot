@@ -11,7 +11,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShoppingCart, AlertTriangle, Package, TrendingDown, Download } from 'lucide-react';
 import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
 import { User, PurchaseSuggestion } from '../types';
-import { toast } from '@/hooks/use-toast';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { showErrorToast, showInfoToast, showSuccessToast } from '@/utils/toastHelpers';
 
 interface ContextType {
   currentWarehouse: string;
@@ -24,6 +27,7 @@ export default function ComprasPage() {
   const [leadTimeDias, setLeadTimeDias] = useState<number>(7);
   const [safetyStockPercent, setSafetyStockPercent] = useState<number>(20);
   const [horizonteSemanas, setHorizonteSemanas] = useState<number>(4);
+  const { isLoading } = useLoadingState({ minLoadingTime: 600 });
 
   // Generate purchase suggestions
   const purchaseSuggestions: PurchaseSuggestion[] = useMemo(() => {
@@ -100,25 +104,15 @@ export default function ComprasPage() {
 
   const handleGeneratePreOrder = () => {
     if (currentUser.role === 'cajero') {
-      toast({
-        title: "Acceso denegado",
-        description: "Solo gerentes y administradores pueden generar pre-órdenes.",
-        variant: "destructive"
-      });
+      showErrorToast("Acceso denegado", "Solo gerentes y administradores pueden generar pre-órdenes.");
       return;
     }
 
-    toast({
-      title: "Función requiere backend",
-      description: "La generación de pre-órdenes estará disponible cuando se conecte un backend real.",
-    });
+    showInfoToast("Función requiere backend", "La generación de pre-órdenes estará disponible cuando se conecte un backend real.");
   };
 
   const handleExport = () => {
-    toast({
-      title: "Exportando sugerencias",
-      description: "Generando archivo CSV con las sugerencias de compra...",
-    });
+    showSuccessToast("Exportando sugerencias", "Generando archivo CSV con las sugerencias de compra...");
   };
 
   const getUrgencyBadge = (coberturaDias: number) => {
@@ -144,7 +138,7 @@ export default function ComprasPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleExport} variant="outline" size="sm">
+          <Button onClick={handleExport} variant="outline" size="sm" className="btn-hover">
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
@@ -152,6 +146,7 @@ export default function ComprasPage() {
             onClick={handleGeneratePreOrder} 
             size="sm"
             disabled={currentUser.role === 'cajero' || purchaseSuggestions.length === 0}
+            className="btn-hover"
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
             Generar Pre-orden
@@ -218,7 +213,7 @@ export default function ComprasPage() {
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="kpi-card">
+        <Card className="kpi-card card-hover animate-fade-in">
           <div className="flex items-center gap-3">
             <Package className="w-8 h-8 text-primary" />
             <div>
@@ -228,7 +223,7 @@ export default function ComprasPage() {
           </div>
         </Card>
 
-        <Card className="kpi-card">
+        <Card className="kpi-card card-hover animate-fade-in">
           <div className="flex items-center gap-3">
             <ShoppingCart className="w-8 h-8 text-accent" />
             <div>
@@ -240,7 +235,7 @@ export default function ComprasPage() {
           </div>
         </Card>
 
-        <Card className="kpi-card">
+        <Card className="kpi-card card-hover animate-fade-in">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-8 h-8 text-destructive" />
             <div>
@@ -252,7 +247,7 @@ export default function ComprasPage() {
       </div>
 
       {/* Purchase Suggestions Table */}
-      <Card className="data-table">
+      <Card className="data-table card-hover animate-fade-in">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -268,16 +263,14 @@ export default function ComprasPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {purchaseSuggestions.length === 0 ? (
-            <div className="p-8 text-center">
-              <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                No hay sugerencias de compra
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Todos los productos tienen stock suficiente o ajusta los parámetros de configuración.
-              </p>
-            </div>
+          {isLoading ? (
+            <TableSkeleton rows={5} columns={9} />
+          ) : purchaseSuggestions.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title="No hay sugerencias de compra"
+              description="Todos los productos tienen stock suficiente o ajusta los parámetros de configuración."
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

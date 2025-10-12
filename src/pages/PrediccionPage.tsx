@@ -11,6 +11,8 @@ import { mockProducts, mockWarehouses, getProductById, getWarehouseById } from '
 import { User, ChartDataPoint, ForecastData } from '../types';
 import { addWeeks, format, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { ChartSkeleton } from '@/components/ui/chart-skeleton';
 
 interface ContextType {
   currentWarehouse: string;
@@ -22,6 +24,7 @@ export default function PrediccionPage() {
   const [selectedProduct, setSelectedProduct] = useState<string>(mockProducts[0]?.id || '');
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(currentWarehouse);
   const [horizon, setHorizon] = useState<string>('8');
+  const { isLoading } = useLoadingState({ minLoadingTime: 800 });
 
   // Generate mock forecast data
   const forecastData: ForecastData = useMemo(() => {
@@ -215,7 +218,7 @@ export default function PrediccionPage() {
 
       {/* Selected Item Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="text-lg">Producto Seleccionado</CardTitle>
           </CardHeader>
@@ -247,7 +250,7 @@ export default function PrediccionPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="text-lg">Métricas del Modelo</CardTitle>
           </CardHeader>
@@ -279,17 +282,20 @@ export default function PrediccionPage() {
       </div>
 
       {/* Forecast Chart */}
-      <Card className="chart-card">
-        <CardHeader>
-          <CardTitle>Pronóstico de Demanda</CardTitle>
-          <CardDescription>
-            Histórico (azul) vs Pronóstico (rojo) con bandas de confianza (área sombreada)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+      {isLoading ? (
+        <ChartSkeleton />
+      ) : (
+        <Card className="chart-card card-hover animate-fade-in">
+          <CardHeader>
+            <CardTitle>Pronóstico de Demanda</CardTitle>
+            <CardDescription>
+              Histórico (azul) vs Pronóstico (rojo) con bandas de confianza (área sombreada)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="label" 
@@ -365,6 +371,7 @@ export default function PrediccionPage() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
