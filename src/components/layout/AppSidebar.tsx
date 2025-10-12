@@ -116,9 +116,9 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-16" : "w-72"} collapsible="icon">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
+    <Sidebar className={collapsed ? "w-20" : "w-72"} collapsible="icon">
+      <SidebarHeader className={collapsed ? "p-3" : "p-4"}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
           <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-lg flex items-center justify-center touch-target">
             <Package className="w-5 h-5 text-primary-foreground" />
           </div>
@@ -131,18 +131,21 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className={collapsed ? "px-1" : "px-2"}>
         <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
             Navegación Principal
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
+            <SidebarMenu className={collapsed ? "gap-3" : "gap-2"}>
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={`${getNavClass(item.url)} touch-target min-h-[44px]`}>
-                      <item.icon className="w-5 h-5 min-w-[1.25rem]" />
+                  <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined}>
+                    <NavLink 
+                      to={item.url} 
+                      className={`${getNavClass(item.url)} touch-target min-h-[44px] ${collapsed ? "justify-center" : ""}`}
+                    >
+                      <item.icon className={collapsed ? "w-6 h-6" : "w-5 h-5 min-w-[1.25rem]"} />
                       {!collapsed && (
                         <div className="flex flex-col items-start gap-0.5 min-w-0">
                           <span className="font-medium truncate w-full">{item.title}</span>
@@ -161,22 +164,28 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
 
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        {!collapsed && currentUser && (
-          <div className="bg-secondary rounded-lg p-3 mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-full flex items-center justify-center">
-                <UserIcon className="w-4 h-4 text-primary-foreground" />
+      <SidebarFooter className={collapsed ? "p-2" : "p-4"}>
+        {currentUser && (
+          <div className={collapsed ? "flex justify-center mb-2" : "bg-secondary rounded-lg p-3 mb-2"}>
+            {collapsed ? (
+              <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-full flex items-center justify-center touch-target">
+                <UserIcon className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {currentUser.nombre}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize truncate">
-                  {currentUser.role}
-                </p>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-full flex items-center justify-center">
+                  <UserIcon className="w-4 h-4 text-primary-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {currentUser.nombre}
+                  </p>
+                  <p className="text-xs text-muted-foreground capitalize truncate">
+                    {currentUser.role}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         
@@ -184,9 +193,10 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
           variant="ghost"
           size={collapsed ? "icon" : "default"}
           onClick={onLogout}
-          className="w-full justify-start touch-target min-h-[44px]"
+          className={`w-full touch-target min-h-[44px] ${collapsed ? "justify-center" : "justify-start"}`}
+          title={collapsed ? "Cerrar Sesión" : undefined}
         >
-          <LogOut className="w-4 h-4 min-w-[1rem]" />
+          <LogOut className={collapsed ? "w-5 h-5" : "w-4 h-4 min-w-[1rem]"} />
           {!collapsed && <span>Cerrar Sesión</span>}
         </Button>
       </SidebarFooter>
