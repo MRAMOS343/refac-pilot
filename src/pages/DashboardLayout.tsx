@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '../components/layout/AppSidebar';
 import { AppTopbar } from '../components/layout/AppTopbar';
 import { useAuth } from '../hooks/useAuth';
@@ -157,7 +157,7 @@ export function DashboardLayout() {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar currentUser={currentUser} onLogout={handleLogout} />
         
-        <div className="flex-1 flex flex-col min-w-0">
+        <SidebarInset className="flex-1 flex flex-col min-w-0">
           <AppTopbar
             breadcrumbs={generateBreadcrumbs()}
             warehouses={mockWarehouses}
@@ -177,7 +177,7 @@ export function DashboardLayout() {
               currentUser 
             }} />
           </main>
-        </div>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );

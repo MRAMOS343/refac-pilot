@@ -116,7 +116,7 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-20" : "w-72"} collapsible="icon">
+    <Sidebar collapsible="icon">
       <SidebarHeader className={collapsed ? "p-3" : "p-4"}>
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
           <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-lg flex items-center justify-center touch-target">
