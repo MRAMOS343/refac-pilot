@@ -62,20 +62,20 @@ const KPICardComponent = ({
       className
     )}>
       <div className="flex items-start justify-between">
-        <div className="space-y-3 flex-1">
+        <div className="space-y-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
               {getContextualIcon()}
             </div>
-            <p className="text-sm font-medium text-muted-foreground">
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
               {data.label}
             </p>
           </div>
-          <p className="text-3xl font-bold text-foreground">
+          <p className="text-2xl sm:text-3xl font-bold text-foreground break-words">
             {formatValue(data.value, data.format)}
           </p>
         </div>
-        {data.change !== undefined && <div className={cn("flex items-center gap-1 text-sm font-medium", getChangeColorClass())}>
+        {data.change !== undefined && <div className={cn("flex items-center gap-1 text-sm font-medium flex-shrink-0 ml-2", getChangeColorClass())}>
             {getChangeIcon()}
             <span>{data.change > 0 ? '+' : ''}{data.change}%</span>
           </div>}
