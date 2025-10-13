@@ -3,6 +3,8 @@ import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KPICard } from '@/components/ui/kpi-card';
+import { getProductByIdSafe, hasItems } from '@/utils/safeData';
+import { logger } from '@/utils/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -76,7 +78,7 @@ export default function VentasPage() {
     
     const topProductId = Object.entries(productSales)
       .sort(([,a], [,b]) => b - a)[0]?.[0];
-    const topProduct = topProductId ? getProductById(topProductId) : null;
+    const topProduct = topProductId ? getProductByIdSafe(topProductId) : null;
 
     return [
       {
@@ -104,6 +106,10 @@ export default function VentasPage() {
 
   // Generate chart data
   const chartData: ChartDataPoint[] = useMemo(() => {
+    if (!hasItems(filteredSales)) {
+      return [];
+    }
+    
     const salesByDay: Record<string, number> = {};
     
     filteredSales.forEach(sale => {
@@ -145,6 +151,11 @@ export default function VentasPage() {
   };
 
   const handleExportCSV = () => {
+    logger.info('Exportación de ventas iniciada', {
+      cantidadVentas: filteredSales.length,
+      dateRange
+    });
+    
     exportToCSV(
       filteredSales.map(sale => ({
         ID: sale.id,
@@ -163,6 +174,8 @@ export default function VentasPage() {
       "Exportación exitosa",
       "Los datos de ventas se han exportado a CSV correctamente."
     );
+    
+    logger.info('Exportación de ventas completada exitosamente');
   };
 
   return (

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { safeParseFloat, safeParseInt } from "@/utils/validation";
+import { logger } from "@/utils/logger";
 import {
   Dialog,
   DialogContent,
@@ -95,14 +97,16 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
     try {
+      logger.info('Guardando producto', { nombre: data.nombre, sku: data.sku });
       await onSave(data);
       toast({
         title: product ? "Producto actualizado" : "Producto creado",
         description: `${data.nombre} ha sido ${product ? "actualizado" : "creado"} exitosamente.`,
       });
+      logger.info('Producto guardado exitosamente', { nombre: data.nombre });
       onOpenChange(false);
     } catch (error) {
-      console.error('Error al guardar producto:', error);
+      logger.error('Error al guardar producto:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al guardar el producto.",
@@ -239,7 +243,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         step="0.01" 
                         placeholder="0.00"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(safeParseFloat(e.target.value, 0))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -259,7 +263,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         step="0.01" 
                         placeholder="16"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(safeParseFloat(e.target.value, 0))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -278,7 +282,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         type="number" 
                         placeholder="10"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(safeParseInt(e.target.value, 0))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -298,7 +302,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                       type="number" 
                       placeholder="5"
                       {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      onChange={(e) => field.onChange(safeParseInt(e.target.value, 0))}
                     />
                   </FormControl>
                   <FormMessage />

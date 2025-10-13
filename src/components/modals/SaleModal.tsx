@@ -3,6 +3,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { safeParseInt, safeParseFloat, validateInRange, validateInteger, validateNonEmptyArray } from "@/utils/validation";
+import { getProductByIdSafe } from "@/utils/safeData";
+import { logger } from "@/utils/logger";
 import {
   Dialog,
   DialogContent,
@@ -132,35 +135,37 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       return;
     }
 
-    if (cantidad <= 0) {
+    // Usar validación robusta
+    const validacionCantidad = validateInRange(cantidad, 1, 9999, "Cantidad");
+    if (!validacionCantidad.valid) {
       toast({
         title: "Error",
-        description: "La cantidad debe ser mayor a 0.",
+        description: validacionCantidad.error,
         variant: "destructive",
       });
       return;
     }
 
-    if (cantidad > 9999) {
+    const validacionEntero = validateInteger(cantidad, "Cantidad");
+    if (!validacionEntero.valid) {
       toast({
         title: "Error",
-        description: "La cantidad no puede exceder 9999 unidades.",
+        description: validacionEntero.error,
         variant: "destructive",
       });
       return;
     }
 
-    if (!Number.isInteger(cantidad)) {
+    // Obtener producto de forma segura
+    const producto = getProductByIdSafe(productoSeleccionadoId);
+    if (!producto) {
       toast({
         title: "Error",
-        description: "La cantidad debe ser un número entero.",
+        description: "El producto seleccionado no es válido.",
         variant: "destructive",
       });
       return;
     }
-
-    const producto = mockProducts.find(p => p.id === productoSeleccionadoId);
-    if (!producto) return;
 
     // Verificar si el producto ya existe en la lista
     const indiceProductoExistente = productos.findIndex(item => item.productId === productoSeleccionadoId);
@@ -180,6 +185,12 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       };
       setProductos([...productos, nuevoProducto]);
     }
+
+    logger.info('Producto agregado a la venta', {
+      productId: productoSeleccionadoId,
+      cantidad,
+      producto: producto.nombre
+    });
 
     setProductoSeleccionadoId("");
     setCantidad(1);
@@ -205,43 +216,77 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   };
 
   const enviarFormulario = async (datos: SaleFormData) => {
-    if (productos.length === 0) {
+    const validacionItems = validateNonEmptyArray(productos, "Productos");
+    if (!validacionItems.valid) {
       toast({
         title: "Error",
-        description: "Debe agregar al menos un producto a la venta.",
+        description: validacionItems.error,
         variant: "destructive",
       });
       return;
     }
 
     setEnviandoFormulario(true);
+    
+    // Flag para tracking de componente montado
+    let isMounted = true;
+
     try {
       const datosVenta = {
         ...datos,
         items: productos,
       };
+      
+      logger.info('Iniciando registro de venta', { total: totales.total });
+      
       await onSave(datosVenta);
+      
+      if (!isMounted) {
+        logger.warn('Componente desmontado antes de completar venta');
+        return;
+      }
+      
       toast({
         title: "Venta registrada",
         description: `Venta por ${formatCurrency(totales.total)} registrada exitosamente.`,
       });
+      
+      logger.info('Venta registrada exitosamente', { total: totales.total });
       onOpenChange(false);
     } catch (error) {
-      console.error('Error al registrar venta:', error);
+      if (!isMounted) return;
+      
+      logger.error('Error al registrar venta:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al registrar la venta.",
         variant: "destructive",
       });
     } finally {
-      setEnviandoFormulario(false);
+      if (isMounted) {
+        setEnviandoFormulario(false);
+      }
     }
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   };
 
   const getProductName = (productId: string) => {
-    const product = mockProducts.find(p => p.id === productId);
-    return product ? `${product.nombre} - ${product.marca}` : "Producto no encontrado";
+    const product = getProductByIdSafe(productId);
+    return product 
+      ? `${product.nombre} - ${product.marca}` 
+      : "Producto no encontrado";
   };
+
+  // Cleanup al desmontar componente
+  useEffect(() => {
+    return () => {
+      logger.debug('SaleModal desmontado, cancelando operaciones pendientes');
+    };
+  }, []);
 
   const FormContent = () => (
     <Form {...formulario}>
@@ -338,7 +383,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                     pattern="[0-9]*"
                     min="1"
                     value={cantidad}
-                    onChange={(e) => setCantidad(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setCantidad(safeParseInt(e.target.value, 1))}
                     placeholder="1"
                     className={isMobile ? "mobile-input" : ""}
                   />
@@ -385,7 +430,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                               pattern="[0-9]*"
                               min="1"
                               value={producto.qty}
-                              onChange={(e) => actualizarCantidadProducto(indice, parseInt(e.target.value) || 1)}
+                              onChange={(e) => actualizarCantidadProducto(indice, safeParseInt(e.target.value, 1))}
                               className="w-20"
                             />
                           </TableCell>
@@ -401,7 +446,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                               min="0"
                               max="100"
                               value={producto.discount || 0}
-                              onChange={(e) => actualizarDescuentoProducto(indice, parseFloat(e.target.value) || 0)}
+                              onChange={(e) => actualizarDescuentoProducto(indice, safeParseFloat(e.target.value, 0))}
                               className="w-20"
                             />
                           </TableCell>
