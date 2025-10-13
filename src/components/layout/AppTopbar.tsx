@@ -68,19 +68,19 @@ export function AppTopbar({
         <SidebarTrigger className="flex-shrink-0" />
 
         {/* Breadcrumbs */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 py-1">
           <Breadcrumb>
-            <BreadcrumbList>
+            <BreadcrumbList className="flex-wrap">
               {breadcrumbs.map((crumb, index) => (
                 <div key={index} className="flex items-center">
                   {index > 0 && <BreadcrumbSeparator />}
                   <BreadcrumbItem>
                     {crumb.href && index < breadcrumbs.length - 1 ? (
-                      <BreadcrumbLink href={crumb.href}>
+                      <BreadcrumbLink href={crumb.href} className="truncate max-w-[200px]">
                         {crumb.label}
                       </BreadcrumbLink>
                     ) : (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      <BreadcrumbPage className="truncate max-w-[300px]">{crumb.label}</BreadcrumbPage>
                     )}
                   </BreadcrumbItem>
                 </div>

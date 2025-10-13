@@ -43,6 +43,12 @@ export function DashboardLayout() {
     
     let currentPath = '';
     pathParts.forEach((part) => {
+      // Skip "dashboard" as it's just a technical route, not a navigation level
+      if (part === 'dashboard') {
+        currentPath += `/${part}`;
+        return;
+      }
+      
       currentPath += `/${part}`;
       const label = routeLabels[currentPath] || part;
       breadcrumbs.push({ label, href: currentPath });
