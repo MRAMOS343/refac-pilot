@@ -4,10 +4,10 @@ import { KPICard } from "@/components/ui/kpi-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockSales, mockInventory, mockProducts, mockWarehouses } from "@/data/mockData";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
+import { LazyLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "@/components/charts/LazyLineChart";
+import { LazyPieChart, Pie, Cell } from "@/components/charts/LazyPieChart";
 import { TrendingUp, ShoppingCart, Package, DollarSign, AlertTriangle, Plus } from "lucide-react";
-import { Sale, User, KPIData } from "@/types";
+import { User, KPIData } from "@/types";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { kpiService } from "@/services/kpiService";
 import { filterService } from "@/services/filterService";
@@ -15,7 +15,9 @@ import { COLORES_GRAFICOS } from "@/constants";
 import { useLoadingState } from "@/hooks/useLoadingState";
 import { KPISkeleton } from "@/components/ui/kpi-skeleton";
 import { ChartSkeleton } from "@/components/ui/chart-skeleton";
-import { showSuccessToast } from "@/utils/toastHelpers";
+import { SUCCESS_MESSAGES } from "@/constants/messages";
+import { useData } from "@/contexts/DataContext";
+import { toast } from "@/hooks/use-toast";
 
 interface ContextType {
   currentWarehouse: string;
@@ -28,14 +30,15 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [productModalOpen, setProductModalOpen] = useState(false);
   const { isLoading } = useLoadingState({ minLoadingTime: 600 });
+  const { sales, inventory, warehouses } = useData();
 
   // Cálculo de KPIs globales del negocio usando servicio
   const kpisGlobales = useMemo((): KPIData[] => {
-    const ventasFiltradas = filterService.filterSalesByWarehouse(mockSales, currentWarehouse);
-    const inventarioFiltrado = filterService.filterInventoryByWarehouse(mockInventory, currentWarehouse);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
+    const inventarioFiltrado = filterService.filterInventoryByWarehouse(inventory, currentWarehouse);
     
     return kpiService.calculateGlobalKPIs(ventasFiltradas, inventarioFiltrado);
-  }, [currentWarehouse]);
+  }, [currentWarehouse, sales, inventory]);
 
   // Datos de tendencia de ventas (últimos 7 días) para el gráfico lineal
   const datosTendenciaVentas = useMemo(() => {
@@ -45,13 +48,9 @@ export default function DashboardPage() {
       return fecha.toISOString().split('T')[0];
     });
 
-    // Filtrar ventas por sucursal
-    const ventasFiltradas = currentWarehouse === 'all'
-      ? mockSales
-      : mockSales.filter(venta => venta.warehouseId === currentWarehouse);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
 
     return ultimos7Dias.map(fecha => {
-      // Sumar todas las ventas de ese día específico
       const totalDia = ventasFiltradas
         .filter(venta => venta.fechaISO.startsWith(fecha))
         .reduce((suma, venta) => suma + venta.total, 0);
@@ -61,19 +60,19 @@ export default function DashboardPage() {
         value: totalDia
       };
     });
-  }, [currentWarehouse]);
+  }, [currentWarehouse, sales]);
 
   // Distribución de métodos de pago usando servicio
   const datosMetodosPago = useMemo(() => {
-    const ventasFiltradas = filterService.filterSalesByWarehouse(mockSales, currentWarehouse);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
     return kpiService.calculatePaymentMethodDistribution(ventasFiltradas);
-  }, [currentWarehouse]);
+  }, [currentWarehouse, sales]);
 
   // Productos más vendidos usando servicio
   const productosMasVendidos = useMemo(() => {
-    const ventasFiltradas = filterService.filterSalesByWarehouse(mockSales, currentWarehouse);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
     return kpiService.calculateTopProducts(ventasFiltradas, 5);
-  }, [currentWarehouse]);
+  }, [currentWarehouse, sales]);
 
   const handleNewSale = () => {
     navigate('/dashboard/ventas');
@@ -85,7 +84,11 @@ export default function DashboardPage() {
 
   const handleSaveProduct = async (productData: any) => {
     await new Promise(resolve => setTimeout(resolve, 500));
-    showSuccessToast("Producto creado", `${productData.nombre} ha sido creado exitosamente.`);
+    toast({
+      title: "Producto creado",
+      description: SUCCESS_MESSAGES.PRODUCT_CREATED(productData.nombre),
+      className: "bg-success-light dark:bg-success-light border-success dark:border-success",
+    });
     setProductModalOpen(false);
   };
 
@@ -99,7 +102,7 @@ export default function DashboardPage() {
             Resumen general del sistema - {
               currentWarehouse === 'all' 
                 ? 'Todas las Sucursales' 
-                : mockWarehouses.find(w => w.id === currentWarehouse)?.nombre || 'Sucursal no encontrada'
+                : warehouses.find(w => w.id === currentWarehouse)?.nombre || 'Sucursal no encontrada'
             }
           </p>
         </div>
@@ -152,31 +155,29 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={datosTendenciaVentas}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" className="text-muted-foreground" />
-                <YAxis className="text-muted-foreground" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                  formatter={(value: number) => [
-                    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value),
-                    'Ventas'
-                  ]}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <LazyLineChart data={datosTendenciaVentas}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="date" className="text-muted-foreground" />
+              <YAxis className="text-muted-foreground" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+                formatter={(value: number) => [
+                  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value),
+                  'Ventas'
+                ]}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="value" 
+                stroke="hsl(var(--primary))" 
+                strokeWidth={3}
+                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+              />
+            </LazyLineChart>
           </CardContent>
         </Card>
 
@@ -192,54 +193,52 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={datosMetodosPago}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  dataKey="value"
-                  label={(entry) => {
-                    const RADIAN = Math.PI / 180;
-                    const { cx, cy, midAngle, outerRadius, name, percentage } = entry;
-                    const radius = outerRadius + 30;
-                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                    
-                    return (
-                      <text 
-                        x={x} 
-                        y={y} 
-                        fill="hsl(var(--foreground))"
-                        textAnchor={x > cx ? 'start' : 'end'} 
-                        dominantBaseline="central"
-                      >
-                        {`${name} ${percentage}%`}
-                      </text>
-                    );
-                  }}
-                >
-                  {datosMetodosPago.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORES_GRAFICOS[index % COLORES_GRAFICOS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    color: 'hsl(var(--foreground))'
-                  }}
-                  itemStyle={{
-                    color: 'hsl(var(--foreground))'
-                  }}
-                  labelStyle={{
-                    color: 'hsl(var(--foreground))'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <LazyPieChart>
+              <Pie
+                data={datosMetodosPago}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                dataKey="value"
+                label={(entry) => {
+                  const RADIAN = Math.PI / 180;
+                  const { cx, cy, midAngle, outerRadius, name, percentage } = entry;
+                  const radius = outerRadius + 30;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  
+                  return (
+                    <text 
+                      x={x} 
+                      y={y} 
+                      fill="hsl(var(--foreground))"
+                      textAnchor={x > cx ? 'start' : 'end'} 
+                      dominantBaseline="central"
+                    >
+                      {`${name} ${percentage}%`}
+                    </text>
+                  );
+                }}
+              >
+                {datosMetodosPago.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORES_GRAFICOS[index % COLORES_GRAFICOS.length]} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))'
+                }}
+                itemStyle={{
+                  color: 'hsl(var(--foreground))'
+                }}
+                labelStyle={{
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+            </LazyPieChart>
           </CardContent>
         </Card>
           </>
