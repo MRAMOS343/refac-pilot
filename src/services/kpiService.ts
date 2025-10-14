@@ -1,5 +1,4 @@
 import { Sale, Inventory, Product, KPIData } from '@/types';
-import { mockProducts } from '@/data/mockData';
 
 /**
  * Servicio para cálculos de KPIs reutilizables
@@ -8,9 +7,9 @@ export const kpiService = {
   /**
    * Calcula KPIs globales del negocio
    */
-  calculateGlobalKPIs(sales: Sale[], inventory: Inventory[]): KPIData[] {
+  calculateGlobalKPIs(sales: Sale[], inventory: Inventory[], products: Product[]): KPIData[] {
     const ventasTotales = sales.reduce((suma, venta) => suma + venta.total, 0);
-    const totalProductos = mockProducts.length;
+    const totalProductos = products.length;
     const productosStockBajo = inventory.filter(inv => inv.onHand <= 10).length;
     const ticketPromedio = sales.length > 0 ? ventasTotales / sales.length : 0;
 
@@ -89,7 +88,7 @@ export const kpiService = {
   /**
    * Calcula KPIs de ventas
    */
-  calculateSalesKPIs(sales: Sale[]): KPIData[] {
+  calculateSalesKPIs(sales: Sale[], products: Product[]): KPIData[] {
     const totalVentas = sales.reduce((sum, sale) => sum + sale.total, 0);
     const avgTicket = sales.length > 0 ? totalVentas / sales.length : 0;
     
@@ -103,7 +102,7 @@ export const kpiService = {
     
     const topProductId = Object.entries(productSales)
       .sort(([,a], [,b]) => b - a)[0]?.[0];
-    const topProduct = topProductId ? mockProducts.find(p => p.id === topProductId) : null;
+    const topProduct = topProductId ? products.find(p => p.id === topProductId) : null;
 
     return [
       {
@@ -132,10 +131,10 @@ export const kpiService = {
   /**
    * Calcula productos más vendidos por ingresos
    */
-  calculateTopProducts(sales: Sale[], limit: number = 5) {
+  calculateTopProducts(sales: Sale[], products: Product[], limit: number = 5) {
     const ventasProductos = sales.reduce((acumulador, venta) => {
       venta.items.forEach(item => {
-        const producto = mockProducts.find(p => p.id === item.productId);
+        const producto = products.find(p => p.id === item.productId);
         if (producto) {
           if (!acumulador[producto.id]) {
             acumulador[producto.id] = { producto, totalVendido: 0, ingresos: 0 };

@@ -30,15 +30,15 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [productModalOpen, setProductModalOpen] = useState(false);
   const { isLoading } = useLoadingState({ minLoadingTime: 600 });
-  const { sales, inventory, warehouses } = useData();
+  const { sales, inventory, products, warehouses } = useData();
 
   // Cálculo de KPIs globales del negocio usando servicio
   const kpisGlobales = useMemo((): KPIData[] => {
     const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
     const inventarioFiltrado = filterService.filterInventoryByWarehouse(inventory, currentWarehouse);
     
-    return kpiService.calculateGlobalKPIs(ventasFiltradas, inventarioFiltrado);
-  }, [currentWarehouse, sales, inventory]);
+    return kpiService.calculateGlobalKPIs(ventasFiltradas, inventarioFiltrado, products);
+  }, [currentWarehouse, sales, inventory, products]);
 
   // Datos de tendencia de ventas (últimos 7 días) para el gráfico lineal
   const datosTendenciaVentas = useMemo(() => {
@@ -71,8 +71,8 @@ export default function DashboardPage() {
   // Productos más vendidos usando servicio
   const productosMasVendidos = useMemo(() => {
     const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
-    return kpiService.calculateTopProducts(ventasFiltradas, 5);
-  }, [currentWarehouse, sales]);
+    return kpiService.calculateTopProducts(ventasFiltradas, products, 5);
+  }, [currentWarehouse, sales, products]);
 
   const handleNewSale = () => {
     navigate('/dashboard/ventas');

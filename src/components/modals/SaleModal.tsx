@@ -50,7 +50,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts } from "@/data/mockData";
+import { useData } from "@/contexts/DataContext";
+import { useProductCache } from "@/hooks/useProductCache";
 import { Product, SaleItem } from "@/types";
 import { Trash2, Plus, Search } from "lucide-react";
 import { saleSchema, SaleFormData } from "@/schemas";
@@ -67,6 +68,8 @@ interface SaleModalProps {
 export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModalProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { products } = useData();
+  const { getProductName, getProductById: getProductByIdCached } = useProductCache();
   const [enviandoFormulario, setEnviandoFormulario] = useState(false);
   const [productos, setProductos] = useState<SaleItem[]>([]);
   const [productoSeleccionadoId, setProductoSeleccionadoId] = useState("");
@@ -88,15 +91,15 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   // Filtrar productos basado en la búsqueda con debounce
   const productosFiltrados = useMemo(() => {
     if (!busquedaDebounced.trim()) {
-      return mockProducts;
+      return products.slice(0, 10); // Limit initial results
     }
     const busquedaLower = busquedaDebounced.toLowerCase();
-    return mockProducts.filter(producto =>
+    return products.filter(producto =>
       producto.nombre.toLowerCase().includes(busquedaLower) ||
       producto.sku.toLowerCase().includes(busquedaLower) ||
       producto.marca.toLowerCase().includes(busquedaLower)
     );
-  }, [busquedaDebounced]);
+  }, [busquedaDebounced, products]);
 
   // Calcular totales de la venta
   const totales = useMemo(() => {
@@ -164,7 +167,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     }
 
     // Obtener producto de forma segura
-    const producto = getProductByIdSafe(productoSeleccionadoId);
+    const producto = getProductByIdCached(productoSeleccionadoId);
     if (!producto) {
       toast({
         title: "Error",
@@ -273,12 +276,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     }
   };
 
-  const getProductName = (productId: string) => {
-    const product = getProductByIdSafe(productId);
-    return product 
-      ? `${product.nombre} - ${product.marca}` 
-      : "Producto no encontrado";
-  };
+  // Use cached product name function from hook
 
   // Cleanup al desmontar componente
   useEffect(() => {

@@ -119,7 +119,7 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
     <Sidebar collapsible="icon">
       <SidebarHeader className={collapsed ? "p-3" : "p-4"}>
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
-          <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-lg flex items-center justify-center touch-target">
+          <div className="w-10 h-10 min-w-[2.5rem] bg-primary rounded-lg flex items-center justify-center touch-target" aria-label="Logo AutoParts Pro">
             <Package className="w-5 h-5 text-primary-foreground" />
           </div>
           {!collapsed && (
@@ -195,6 +195,7 @@ export function AppSidebar({ currentUser, onLogout }: AppSidebarProps) {
           onClick={onLogout}
           className={`w-full touch-target min-h-[44px] ${collapsed ? "justify-center" : "justify-start"}`}
           title={collapsed ? "Cerrar Sesión" : undefined}
+          aria-label="Cerrar sesión"
         >
           <LogOut className={collapsed ? "w-5 h-5" : "w-4 h-4 min-w-[1rem]"} />
           {!collapsed && <span>Cerrar Sesión</span>}

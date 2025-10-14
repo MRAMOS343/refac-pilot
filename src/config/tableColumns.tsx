@@ -1,115 +1,139 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Sale, Inventory, Product } from '@/types';
+import { Sale, Product } from '@/types';
 
 /**
  * Definiciones memoizadas de columnas para tablas
  * Evita recrear objetos en cada render
  */
 
-export const getVentasColumns = (getProductName: (id: string) => string) => [
-  {
-    key: 'fecha',
-    label: 'Fecha',
-    render: (sale: Sale) => format(new Date(sale.fechaISO), "dd/MM/yyyy HH:mm", { locale: es }),
-  },
-  {
-    key: 'id',
-    label: 'ID',
-    render: (sale: Sale) => <span className="font-mono text-sm">{sale.id.slice(0, 8)}</span>,
-  },
-  {
-    key: 'items',
-    label: 'Productos',
-    render: (sale: Sale) => (
-      <div className="max-w-xs">
-        {sale.items.slice(0, 2).map((item, idx) => (
-          <div key={idx} className="text-sm text-muted-foreground truncate">
-            {getProductName(item.productId)}
-          </div>
-        ))}
-        {sale.items.length > 2 && (
-          <span className="text-xs text-muted-foreground">
-            +{sale.items.length - 2} más
-          </span>
-        )}
+export const getVentasColumns = (getMetodoPagoBadge: (metodo: Sale['metodoPago']) => JSX.Element) => [
+  { key: 'id', header: 'ID Venta' },
+  { 
+    key: 'fechaISO', 
+    header: 'Fecha',
+    render: (value: string) => (
+      <div>
+        <div className="font-medium">
+          {format(new Date(value), 'dd/MM/yyyy', { locale: es })}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {format(new Date(value), 'HH:mm')}
+        </div>
       </div>
-    ),
+    )
   },
-  {
-    key: 'total',
-    label: 'Total',
-    render: (sale: Sale) => (
-      <span className="font-semibold text-success">
-        ${sale.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-      </span>
-    ),
+  { key: 'vendedor', header: 'Vendedor' },
+  { 
+    key: 'metodoPago', 
+    header: 'Método Pago',
+    render: (value: Sale['metodoPago']) => getMetodoPagoBadge(value)
   },
-  {
-    key: 'metodoPago',
-    label: 'Método de Pago',
-    render: (sale: Sale) => {
-      const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-        efectivo: 'default',
-        tarjeta: 'secondary',
-        transferencia: 'outline',
-      };
-      return (
-        <Badge variant={variants[sale.metodoPago] || 'default'}>
-          {sale.metodoPago}
-        </Badge>
-      );
-    },
+  { 
+    key: 'subtotal', 
+    header: 'Subtotal',
+    render: (value: number) => <span className="text-right block">${value.toFixed(2)}</span>
   },
+  { 
+    key: 'iva', 
+    header: 'IVA',
+    render: (value: number) => <span className="text-right text-muted-foreground block">${value.toFixed(2)}</span>
+  },
+  { 
+    key: 'total', 
+    header: 'Total',
+    render: (value: number) => <span className="text-right font-medium block">${value.toFixed(2)}</span>
+  },
+  { 
+    key: 'items', 
+    header: 'Items',
+    render: (value: any[]) => (
+      <div className="text-center">
+        <Badge variant="outline">{value.length} items</Badge>
+      </div>
+    )
+  }
 ];
 
+interface InventoryWithProduct {
+  onHand: number;
+  reserved: number;
+  product: Product;
+}
+
 export const getInventoryColumns = (
-  getProductName: (id: string) => string,
-  getWarehouseName: (id: string) => string
+  handleEditProduct: (product: Product) => void,
+  getStockStatusBadge: (inv: InventoryWithProduct) => JSX.Element
 ) => [
   {
-    key: 'producto',
-    label: 'Producto',
-    render: (inv: Inventory) => getProductName(inv.productId),
+    key: 'product.sku',
+    header: 'SKU',
+    sortable: true,
+    render: (_: any, row: InventoryWithProduct) => (
+      <span className="font-mono text-sm">{row.product.sku}</span>
+    )
   },
   {
-    key: 'sucursal',
-    label: 'Sucursal',
-    render: (inv: Inventory) => getWarehouseName(inv.warehouseId),
+    key: 'product.nombre',
+    header: 'Producto',
+    sortable: true,
+    render: (_: any, row: InventoryWithProduct) => (
+      <div>
+        <p className="font-medium">{row.product.nombre}</p>
+        <p className="text-sm text-muted-foreground">{row.product.marca}</p>
+      </div>
+    )
   },
   {
-    key: 'disponible',
-    label: 'Disponible',
-    render: (inv: Inventory) => (
-      <span className="font-semibold">{inv.onHand - inv.reserved}</span>
-    ),
+    key: 'product.categoria',
+    header: 'Categoría',
+    sortable: true,
+    render: (_: any, row: InventoryWithProduct) => (
+      <Badge variant="outline">{row.product.categoria}</Badge>
+    )
   },
   {
-    key: 'reservado',
-    label: 'Reservado',
-    render: (inv: Inventory) => (
-      <span className="text-muted-foreground">{inv.reserved}</span>
-    ),
+    key: 'onHand',
+    header: 'Stock',
+    sortable: true,
+    render: (_: any, row: InventoryWithProduct) => (
+      <div className="text-right">
+        <span className="font-medium">{row.onHand}</span>
+        <span className="text-sm text-muted-foreground ml-1">{row.product.unidad}</span>
+      </div>
+    )
   },
   {
-    key: 'total',
-    label: 'Total',
-    render: (inv: Inventory) => <span className="font-semibold">{inv.onHand}</span>,
+    key: 'product.precio',
+    header: 'Precio',
+    sortable: true,
+    render: (_: any, row: InventoryWithProduct) => (
+      <span className="font-medium">
+        {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(row.product.precio)}
+      </span>
+    )
   },
   {
-    key: 'estado',
-    label: 'Estado',
-    render: (inv: Inventory) => {
-      const disponible = inv.onHand - inv.reserved;
-      return (
-        <Badge variant={disponible > 10 ? 'default' : disponible > 0 ? 'secondary' : 'destructive'}>
-          {disponible > 10 ? 'En stock' : disponible > 0 ? 'Bajo' : 'Agotado'}
-        </Badge>
-      );
-    },
+    key: 'status',
+    header: 'Estado',
+    render: (_: any, row: InventoryWithProduct) => getStockStatusBadge(row)
   },
+  {
+    key: 'actions',
+    header: 'Acciones',
+    render: (_: any, row: InventoryWithProduct) => (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => handleEditProduct(row.product)}
+      >
+        <Edit className="w-4 h-4" />
+      </Button>
+    )
+  }
 ];
 
 export const getProductsColumns = () => [

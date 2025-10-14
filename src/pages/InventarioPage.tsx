@@ -10,7 +10,9 @@ import { DataTable, Columna } from '@/components/ui/data-table';
 import { ProductModal } from '@/components/modals/ProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X, Filter } from 'lucide-react';
-import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
+import { useData } from '@/contexts/DataContext';
+import { useDebounce } from '@/hooks/useDebounce';
+import { getInventoryColumns } from '@/config/tableColumns';
 import { Product, Inventory, User, KPIData } from '../types';
 import { exportToCSV } from '@/utils/exportCSV';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -33,6 +35,8 @@ interface InventoryWithProduct extends Inventory {
 
 export default function InventarioPage() {
   const { currentWarehouse, searchQuery, currentUser } = useOutletContext<ContextType>();
+  const { products, inventory, getProductById, getWarehouseById } = useData();
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedMarca, setSelectedMarca] = useState<string>('all');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('all');
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -41,12 +45,12 @@ export default function InventarioPage() {
   const isMobile = useIsMobile();
 
   // Get unique brands and categories for filters
-  const marcas = [...new Set(mockProducts.map(p => p.marca))];
-  const categorias = [...new Set(mockProducts.map(p => p.categoria))];
+  const marcas = useMemo(() => [...new Set(products.map(p => p.marca))], [products]);
+  const categorias = useMemo(() => [...new Set(products.map(p => p.categoria))], [products]);
 
   // Filter inventory data for current warehouse
   const warehouseInventory = useMemo(() => {
-    return mockInventory
+    return inventory
       .filter(inv => currentWarehouse === 'all' || inv.warehouseId === currentWarehouse)
       .map(inv => {
         const product = getProductById(inv.productId);
@@ -54,9 +58,9 @@ export default function InventarioPage() {
       })
       .filter((item): item is InventoryWithProduct => item !== null)
       .filter(item => {
-        // Search filter
-        if (searchQuery) {
-          const searchLower = searchQuery.toLowerCase();
+        // Search filter with debounce
+        if (debouncedSearchQuery) {
+          const searchLower = debouncedSearchQuery.toLowerCase();
           if (!item.product.nombre.toLowerCase().includes(searchLower) && 
               !item.product.sku.toLowerCase().includes(searchLower) && 
               !item.product.marca.toLowerCase().includes(searchLower)) {
@@ -76,7 +80,7 @@ export default function InventarioPage() {
 
         return true;
       });
-  }, [currentWarehouse, searchQuery, selectedMarca, selectedCategoria]);
+  }, [inventory, currentWarehouse, debouncedSearchQuery, selectedMarca, selectedCategoria]);
 
   // Calculate KPIs for current warehouse
   const warehouseKPIs = useMemo((): KPIData[] => {
@@ -118,7 +122,7 @@ export default function InventarioPage() {
 
   // Calculate global totals across all warehouses
   const globalTotals = useMemo(() => {
-    const allInventory = mockInventory.map(inv => {
+    const allInventory = inventory.map(inv => {
       const product = getProductById(inv.productId);
       return product ? { ...inv, product } : null;
     }).filter((item): item is InventoryWithProduct => item !== null);
@@ -144,77 +148,13 @@ export default function InventarioPage() {
       totalItems,
       byWarehouse
     };
-  }, []);
+  }, [inventory, getProductById]);
 
-  // Define columns for the data table
-  const inventoryColumns: Columna<InventoryWithProduct>[] = [
-    {
-      key: 'product.sku',
-      header: 'SKU',
-      sortable: true,
-      render: (_, row) => (
-        <span className="font-mono text-sm">{row.product.sku}</span>
-      )
-    },
-    {
-      key: 'product.nombre',
-      header: 'Producto',
-      sortable: true,
-      render: (_, row) => (
-        <div>
-          <p className="font-medium">{row.product.nombre}</p>
-          <p className="text-sm text-muted-foreground">{row.product.marca}</p>
-        </div>
-      )
-    },
-    {
-      key: 'product.categoria',
-      header: 'Categoría',
-      sortable: true,
-      render: (_, row) => (
-        <Badge variant="outline">{row.product.categoria}</Badge>
-      )
-    },
-    {
-      key: 'onHand',
-      header: 'Stock',
-      sortable: true,
-      render: (_, row) => (
-        <div className="text-right">
-          <span className="font-medium">{row.onHand}</span>
-          <span className="text-sm text-muted-foreground ml-1">{row.product.unidad}</span>
-        </div>
-      )
-    },
-    {
-      key: 'product.precio',
-      header: 'Precio',
-      sortable: true,
-      render: (_, row) => (
-        <span className="font-medium">
-          {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(row.product.precio)}
-        </span>
-      )
-    },
-    {
-      key: 'status',
-      header: 'Estado',
-      render: (_, row) => getStockStatusBadge(row)
-    },
-    {
-      key: 'actions',
-      header: 'Acciones',
-      render: (_, row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleEditProduct(row.product)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      )
-    }
-  ];
+  // Memoized columns
+  const inventoryColumns = useMemo(() => 
+    getInventoryColumns(handleEditProduct, getStockStatusBadge),
+    []
+  );
 
   const getStockStatusBadge = (inv: InventoryWithProduct) => {
     if (inv.onHand <= inv.product.reorderPoint) {
@@ -299,15 +239,15 @@ export default function InventarioPage() {
           </p>
         </div>
         <div className="flex gap-2 self-end sm:self-auto flex-wrap">
-          <Button variant="outline" onClick={handleExportCSV} size="sm" className="btn-hover touch-target">
+          <Button variant="outline" onClick={handleExportCSV} size="sm" className="btn-hover touch-target" aria-label="Exportar inventario a CSV">
             <Download className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Exportar CSV</span>
           </Button>
-          <Button variant="outline" onClick={handleImportCSV} size="sm" className="btn-hover touch-target">
+          <Button variant="outline" onClick={handleImportCSV} size="sm" className="btn-hover touch-target" aria-label="Importar inventario desde CSV">
             <Upload className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Importar CSV</span>
           </Button>
-          <Button onClick={handleCreateProduct} size="sm" className="btn-hover touch-target">
+          <Button onClick={handleCreateProduct} size="sm" className="btn-hover touch-target" aria-label="Crear nuevo producto">
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Nuevo Producto</span>
           </Button>

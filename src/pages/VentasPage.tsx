@@ -9,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Plus, Download, ShoppingBag, Filter } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockSales, mockWarehouses, getWarehouseById, getProductById } from '../data/mockData';
+import { LazyLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from '@/components/charts/LazyLineChart';
+import { useData } from '@/contexts/DataContext';
+import { useProductCache } from '@/hooks/useProductCache';
+import { getVentasColumns } from '@/config/tableColumns';
 import { Sale, User, KPIData, ChartDataPoint } from '../types';
 import { format, startOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -32,6 +34,8 @@ interface ContextType {
 
 export default function VentasPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
+  const { sales, getWarehouseById } = useData();
+  const { getProductName } = useProductCache();
   const [selectedMetodoPago, setSelectedMetodoPago] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('30d');
   const { isLoading } = useLoadingState({ minLoadingTime: 1000 });
@@ -56,12 +60,12 @@ export default function VentasPage() {
         startDate = subDays(now, 30);
     }
 
-    return mockSales
+    return sales
       .filter(sale => currentWarehouse === 'all' || sale.warehouseId === currentWarehouse)
       .filter(sale => new Date(sale.fechaISO) >= startDate)
       .filter(sale => selectedMetodoPago && selectedMetodoPago !== 'all' ? sale.metodoPago === selectedMetodoPago : true)
       .sort((a, b) => new Date(b.fechaISO).getTime() - new Date(a.fechaISO).getTime());
-  }, [currentWarehouse, selectedMetodoPago, dateRange]);
+  }, [sales, currentWarehouse, selectedMetodoPago, dateRange]);
 
   // Calculate KPIs
   const kpis: KPIData[] = useMemo(() => {
@@ -78,7 +82,7 @@ export default function VentasPage() {
     
     const topProductId = Object.entries(productSales)
       .sort(([,a], [,b]) => b - a)[0]?.[0];
-    const topProduct = topProductId ? getProductByIdSafe(topProductId) : null;
+    const topProductName = topProductId ? getProductName(topProductId).split(' - ')[0] : 'Sin datos';
 
     return [
       {
@@ -97,7 +101,7 @@ export default function VentasPage() {
       },
       {
         label: 'Producto Top',
-        value: topProduct?.nombre || 'Sin datos',
+        value: topProductName,
         change: 8.5,
         changeType: 'positive'
       }
@@ -193,11 +197,11 @@ export default function VentasPage() {
           </p>
         </div>
         <div className="flex gap-2 self-end sm:self-auto">
-          <Button onClick={handleCreateSale} size="sm" className="btn-hover touch-target">
+          <Button onClick={handleCreateSale} size="sm" className="btn-hover touch-target" aria-label="Crear nueva venta">
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Nueva Venta</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportCSV} className="btn-hover touch-target">
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="btn-hover touch-target" aria-label="Exportar datos de ventas a CSV">
             <Download className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Exportar</span>
           </Button>
@@ -234,24 +238,22 @@ export default function VentasPage() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value: number) => [`$${value.toFixed(2)}`, 'Ventas']}
-                    labelFormatter={(label) => `Fecha: ${label}`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--primary))' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <LazyLineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: number) => [`$${value.toFixed(2)}`, 'Ventas']}
+                  labelFormatter={(label) => `Fecha: ${label}`}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                />
+              </LazyLineChart>
             </div>
           </CardContent>
         </Card>
@@ -398,53 +400,7 @@ export default function VentasPage() {
           ) : (
             <ResponsiveTable
               data={filteredSales}
-              columns={[
-                { key: 'id', header: 'ID Venta' },
-                { 
-                  key: 'fechaISO', 
-                  header: 'Fecha',
-                  render: (value: string) => (
-                    <div>
-                      <div className="font-medium">
-                        {format(new Date(value), 'dd/MM/yyyy', { locale: es })}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {format(new Date(value), 'HH:mm')}
-                      </div>
-                    </div>
-                  )
-                },
-                { key: 'vendedor', header: 'Vendedor' },
-                { 
-                  key: 'metodoPago', 
-                  header: 'Método Pago',
-                  render: (value: Sale['metodoPago']) => getMetodoPagoBadge(value)
-                },
-                { 
-                  key: 'subtotal', 
-                  header: 'Subtotal',
-                  render: (value: number) => <span className="text-right block">${value.toFixed(2)}</span>
-                },
-                { 
-                  key: 'iva', 
-                  header: 'IVA',
-                  render: (value: number) => <span className="text-right text-muted-foreground block">${value.toFixed(2)}</span>
-                },
-                { 
-                  key: 'total', 
-                  header: 'Total',
-                  render: (value: number) => <span className="text-right font-medium block">${value.toFixed(2)}</span>
-                },
-                { 
-                  key: 'items', 
-                  header: 'Items',
-                  render: (value: any[]) => (
-                    <div className="text-center">
-                      <Badge variant="outline">{value.length} items</Badge>
-                    </div>
-                  )
-                }
-              ]}
+              columns={getVentasColumns(getMetodoPagoBadge)}
               mobileCardRender={(sale) => (
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
