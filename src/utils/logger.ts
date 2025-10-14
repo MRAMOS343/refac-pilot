@@ -1,3 +1,5 @@
+import { LIMITS } from '@/constants/limits';
+
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 interface LogEntry {
@@ -9,7 +11,7 @@ interface LogEntry {
 
 class Logger {
   private logs: LogEntry[] = [];
-  private maxLogs: number = 100;
+  private maxLogs: number = LIMITS.LOGGER.MAX_LOGS;
   private isDevelopment: boolean = import.meta.env.DEV;
 
   private formatTimestamp(): string {
@@ -17,65 +19,94 @@ class Logger {
   }
 
   private addLog(level: LogLevel, message: string, data?: any) {
-    const entry: LogEntry = {
-      level,
-      message,
-      data,
-      timestamp: this.formatTimestamp(),
-    };
+    try {
+      const entry: LogEntry = {
+        level,
+        message,
+        data,
+        timestamp: this.formatTimestamp(),
+      };
 
-    this.logs.push(entry);
+      this.logs.push(entry);
 
-    // Mantener solo los últimos maxLogs logs
-    if (this.logs.length > this.maxLogs) {
-      this.logs.shift();
+      // Mantener solo los últimos maxLogs logs
+      if (this.logs.length > this.maxLogs) {
+        this.logs.shift();
+      }
+
+      // En desarrollo, también enviar a console
+      if (this.isDevelopment) {
+        this.logToConsole(level, message, data);
+      }
+
+      // Aquí podrías enviar logs a un servicio externo como Sentry, LogRocket, etc.
+      // this.sendToExternalService(entry);
+    } catch (error) {
+      // Fallback silencioso - no queremos que el logger tumbe la app
+      try {
+        console.error('[Logger Error]', error);
+      } catch {
+        // Silencio total si todo falla
+      }
     }
-
-    // En desarrollo, también enviar a console
-    if (this.isDevelopment) {
-      this.logToConsole(level, message, data);
-    }
-
-    // Aquí podrías enviar logs a un servicio externo como Sentry, LogRocket, etc.
-    // this.sendToExternalService(entry);
   }
 
   private logToConsole(level: LogLevel, message: string, data?: any) {
-    const styles: Record<LogLevel, string> = {
-      info: 'color: #3B82F6; font-weight: bold',
-      warn: 'color: #F59E0B; font-weight: bold',
-      error: 'color: #EF4444; font-weight: bold',
-      debug: 'color: #8B5CF6; font-weight: bold',
-    };
+    try {
+      const styles: Record<LogLevel, string> = {
+        info: 'color: #3B82F6; font-weight: bold',
+        warn: 'color: #F59E0B; font-weight: bold',
+        error: 'color: #EF4444; font-weight: bold',
+        debug: 'color: #8B5CF6; font-weight: bold',
+      };
 
-    const emoji: Record<LogLevel, string> = {
-      info: 'ℹ️',
-      warn: '⚠️',
-      error: '❌',
-      debug: '🐛',
-    };
+      const emoji: Record<LogLevel, string> = {
+        info: 'ℹ️',
+        warn: '⚠️',
+        error: '❌',
+        debug: '🐛',
+      };
 
-    console.log(
-      `%c${emoji[level]} [${level.toUpperCase()}] ${message}`,
-      styles[level],
-      data || ''
-    );
+      console.log(
+        `%c${emoji[level]} [${level.toUpperCase()}] ${message}`,
+        styles[level],
+        data || ''
+      );
+    } catch {
+      // Si console.log falla, no hacer nada
+    }
   }
 
   public info(message: string, data?: any) {
-    this.addLog('info', message, data);
+    try {
+      this.addLog('info', message, data);
+    } catch {
+      // Silencio
+    }
   }
 
   public warn(message: string, data?: any) {
-    this.addLog('warn', message, data);
+    try {
+      this.addLog('warn', message, data);
+    } catch {
+      // Silencio
+    }
   }
 
   public error(message: string, data?: any) {
-    this.addLog('error', message, data);
+    try {
+      this.addLog('error', message, data);
+    } catch {
+      // Silencio
+    }
   }
 
   public debug(message: string, data?: any) {
-    this.addLog('debug', message, data);
+    try {
+      this.addLog('debug', message, data);
+    } catch {
+      // Silencio
+    }
   }
 
   // Obtener todos los logs

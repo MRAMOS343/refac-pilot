@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { safeParseInt, safeParseFloat, validateInRange, validateInteger, validateNonEmptyArray } from "@/utils/validation";
 import { getProductByIdSafe } from "@/utils/safeData";
 import { logger } from "@/utils/logger";
+import { LIMITS } from "@/constants/limits";
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   const [cantidad, setCantidad] = useState(1);
   const [busquedaProducto, setBusquedaProducto] = useState("");
   const busquedaDebounced = useDebounce(busquedaProducto, 300);
+  const isMountedRef = useRef(true);
 
   // Configuración del formulario con validación
   const formulario = useForm<SaleFormData>({
@@ -135,8 +137,13 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       return;
     }
 
-    // Usar validación robusta
-    const validacionCantidad = validateInRange(cantidad, 1, 9999, "Cantidad");
+    // Usar validación robusta con límites constantes
+    const validacionCantidad = validateInRange(
+      cantidad, 
+      LIMITS.SALE.QUANTITY_MIN, 
+      LIMITS.SALE.QUANTITY_MAX, 
+      "Cantidad"
+    );
     if (!validacionCantidad.valid) {
       toast({
         title: "Error",
@@ -227,9 +234,6 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     }
 
     setEnviandoFormulario(true);
-    
-    // Flag para tracking de componente montado
-    let isMounted = true;
 
     try {
       const datosVenta = {
@@ -241,7 +245,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       
       await onSave(datosVenta);
       
-      if (!isMounted) {
+      if (!isMountedRef.current) {
         logger.warn('Componente desmontado antes de completar venta');
         return;
       }
@@ -254,7 +258,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       logger.info('Venta registrada exitosamente', { total: totales.total });
       onOpenChange(false);
     } catch (error) {
-      if (!isMounted) return;
+      if (!isMountedRef.current) return;
       
       logger.error('Error al registrar venta:', error);
       toast({
@@ -263,15 +267,10 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
         variant: "destructive",
       });
     } finally {
-      if (isMounted) {
+      if (isMountedRef.current) {
         setEnviandoFormulario(false);
       }
     }
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
   };
 
   const getProductName = (productId: string) => {
@@ -284,6 +283,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   // Cleanup al desmontar componente
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       logger.debug('SaleModal desmontado, cancelando operaciones pendientes');
     };
   }, []);

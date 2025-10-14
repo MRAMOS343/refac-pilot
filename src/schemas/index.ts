@@ -1,39 +1,40 @@
 import { z } from "zod";
 import { CATEGORIAS_PRODUCTO, UNIDADES_MEDIDA, METODOS_PAGO, TICKET_CATEGORIAS, TICKET_PRIORIDADES, TICKET_ESTADOS } from "@/constants";
+import { LIMITS } from "@/constants/limits";
 
 // ============= Product Schemas =============
 export const productSchema = z.object({
   sku: z.string()
-    .min(1, "SKU es requerido")
-    .max(50, "SKU debe tener máximo 50 caracteres")
+    .min(LIMITS.PRODUCT.SKU_MIN, "SKU es requerido")
+    .max(LIMITS.PRODUCT.SKU_MAX, `SKU debe tener máximo ${LIMITS.PRODUCT.SKU_MAX} caracteres`)
     .regex(/^[A-Z0-9-]+$/i, "SKU solo puede contener letras, números y guiones")
     .trim(),
   nombre: z.string()
-    .min(1, "Nombre es requerido")
-    .max(200, "Nombre debe tener máximo 200 caracteres")
+    .min(LIMITS.PRODUCT.NOMBRE_MIN, "Nombre es requerido")
+    .max(LIMITS.PRODUCT.NOMBRE_MAX, `Nombre debe tener máximo ${LIMITS.PRODUCT.NOMBRE_MAX} caracteres`)
     .trim(),
   marca: z.string()
-    .min(1, "Marca es requerida")
-    .max(100, "Marca debe tener máximo 100 caracteres")
+    .min(LIMITS.PRODUCT.MARCA_MIN, "Marca es requerida")
+    .max(LIMITS.PRODUCT.MARCA_MAX, `Marca debe tener máximo ${LIMITS.PRODUCT.MARCA_MAX} caracteres`)
     .trim(),
   categoria: z.string().min(1, "Categoría es requerida"),
   unidad: z.string().min(1, "Unidad es requerida"),
   precio: z.number()
-    .min(0.01, "El precio debe ser mayor a 0")
-    .max(999999.99, "El precio excede el límite permitido"),
+    .min(LIMITS.PRODUCT.PRECIO_MIN, "El precio debe ser mayor a 0")
+    .max(LIMITS.PRODUCT.PRECIO_MAX, "El precio excede el límite permitido"),
   iva: z.number()
-    .min(0, "IVA no puede ser negativo")
-    .max(100, "IVA no puede ser mayor a 100%"),
+    .min(LIMITS.PRODUCT.IVA_MIN, "IVA no puede ser negativo")
+    .max(LIMITS.PRODUCT.IVA_MAX, "IVA no puede ser mayor a 100%"),
   reorderPoint: z.number()
     .int("Punto de reorden debe ser un número entero")
-    .min(0, "Punto de reorden no puede ser negativo")
-    .max(9999, "Punto de reorden excede el límite"),
+    .min(LIMITS.PRODUCT.REORDER_MIN, "Punto de reorden no puede ser negativo")
+    .max(LIMITS.PRODUCT.REORDER_MAX, "Punto de reorden excede el límite"),
   safetyStock: z.number()
     .int("Stock de seguridad debe ser un número entero")
-    .min(0, "Stock de seguridad no puede ser negativo")
-    .max(9999, "Stock de seguridad excede el límite"),
+    .min(LIMITS.PRODUCT.SAFETY_STOCK_MIN, "Stock de seguridad no puede ser negativo")
+    .max(LIMITS.PRODUCT.SAFETY_STOCK_MAX, "Stock de seguridad excede el límite"),
   descripcion: z.string()
-    .max(500, "Descripción debe tener máximo 500 caracteres")
+    .max(LIMITS.PRODUCT.DESCRIPCION_MAX, `Descripción debe tener máximo ${LIMITS.PRODUCT.DESCRIPCION_MAX} caracteres`)
     .optional(),
 });
 
