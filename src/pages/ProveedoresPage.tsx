@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Truck, Search, Mail, Phone, MapPin, FileText, Plus, Edit, Trash2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockSuppliers } from "@/data/mockData";
+import { useData } from '@/contexts/DataContext';
 import { Supplier } from "@/types";
+import { supplierSchema, SupplierFormData } from '@/schemas/supplierSchema';
+import { sanitizeHtml, sanitizePhone } from '@/utils/sanitize';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -17,20 +21,25 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ProveedoresPage() {
   const isMobile = useIsMobile();
-  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
+  const { suppliers: initialSuppliers } = useData();
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [formData, setFormData] = useState({
-    nombre: "",
-    contacto: "",
-    telefono: "",
-    email: "",
-    direccion: "",
-    rfc: "",
-    categorias: "",
-    activo: true
+
+  const form = useForm<SupplierFormData>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      nombre: "",
+      contacto: "",
+      telefono: "",
+      email: "",
+      direccion: "",
+      rfc: "",
+      categorias: "",
+      activo: true
+    }
   });
 
   const filteredSuppliers = suppliers.filter(supplier => {
@@ -50,7 +59,7 @@ export default function ProveedoresPage() {
   const handleOpenDialog = (supplier?: Supplier) => {
     if (supplier) {
       setEditingSupplier(supplier);
-      setFormData({
+      form.reset({
         nombre: supplier.nombre,
         contacto: supplier.contacto,
         telefono: supplier.telefono,
@@ -62,7 +71,7 @@ export default function ProveedoresPage() {
       });
     } else {
       setEditingSupplier(null);
-      setFormData({
+      form.reset({
         nombre: "",
         contacto: "",
         telefono: "",
@@ -76,25 +85,17 @@ export default function ProveedoresPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSaveSupplier = () => {
-    if (!formData.nombre.trim()) {
-      toast.error("El nombre del proveedor es requerido");
-      return;
-    }
-    if (!formData.contacto.trim()) {
-      toast.error("El nombre de contacto es requerido");
-      return;
-    }
-    if (!formData.telefono.trim()) {
-      toast.error("El teléfono es requerido");
-      return;
-    }
-    if (!formData.email.trim()) {
-      toast.error("El email es requerido");
-      return;
-    }
+  const onSubmit = (data: SupplierFormData) => {
+    const sanitizedData = {
+      ...data,
+      nombre: sanitizeHtml(data.nombre),
+      contacto: sanitizeHtml(data.contacto),
+      telefono: sanitizePhone(data.telefono),
+      direccion: data.direccion ? sanitizeHtml(data.direccion) : "",
+      categorias: sanitizeHtml(data.categorias)
+    };
 
-    const categoriasArray = formData.categorias
+    const categoriasArray = sanitizedData.categorias
       .split(",")
       .map(c => c.trim())
       .filter(c => c.length > 0);
@@ -104,14 +105,14 @@ export default function ProveedoresPage() {
         s.id === editingSupplier.id
           ? {
               ...editingSupplier,
-              nombre: formData.nombre,
-              contacto: formData.contacto,
-              telefono: formData.telefono,
-              email: formData.email,
-              direccion: formData.direccion,
-              rfc: formData.rfc,
+              nombre: sanitizedData.nombre,
+              contacto: sanitizedData.contacto,
+              telefono: sanitizedData.telefono,
+              email: sanitizedData.email,
+              direccion: sanitizedData.direccion || "",
+              rfc: sanitizedData.rfc || "",
               categorias: categoriasArray,
-              activo: formData.activo
+              activo: sanitizedData.activo
             }
           : s
       ));
@@ -119,14 +120,14 @@ export default function ProveedoresPage() {
     } else {
       const newSupplier: Supplier = {
         id: `s${suppliers.length + 1}`,
-        nombre: formData.nombre,
-        contacto: formData.contacto,
-        telefono: formData.telefono,
-        email: formData.email,
-        direccion: formData.direccion,
-        rfc: formData.rfc,
+        nombre: sanitizedData.nombre,
+        contacto: sanitizedData.contacto,
+        telefono: sanitizedData.telefono,
+        email: sanitizedData.email,
+        direccion: sanitizedData.direccion || "",
+        rfc: sanitizedData.rfc || "",
         categorias: categoriasArray,
-        activo: formData.activo
+        activo: sanitizedData.activo
       };
       setSuppliers([...suppliers, newSupplier]);
       toast.success("Proveedor creado correctamente");
@@ -141,7 +142,8 @@ export default function ProveedoresPage() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <main role="main" aria-label="Contenido principal">
+      <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Proveedores</h1>
@@ -149,7 +151,7 @@ export default function ProveedoresPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()} className="touch-target w-full sm:w-auto">
+            <Button onClick={() => handleOpenDialog()} className="touch-target w-full sm:w-auto" aria-label="Agregar nuevo proveedor">
               <Plus className="w-4 h-4 mr-2" />
               {isMobile ? "Agregar" : "Agregar Proveedor"}
             </Button>
@@ -167,19 +169,23 @@ export default function ProveedoresPage() {
                   <Label htmlFor="nombre">Nombre del Proveedor *</Label>
                   <Input
                     id="nombre"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    {...form.register('nombre')}
                     placeholder="Ej: Autopartes del Bajío S.A. de C.V."
                   />
+                  {form.formState.errors.nombre && (
+                    <p className="text-sm text-destructive">{form.formState.errors.nombre.message}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contacto">Nombre de Contacto *</Label>
                   <Input
                     id="contacto"
-                    value={formData.contacto}
-                    onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                    {...form.register('contacto')}
                     placeholder="Ej: Ing. Roberto González"
                   />
+                  {form.formState.errors.contacto && (
+                    <p className="text-sm text-destructive">{form.formState.errors.contacto.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -188,20 +194,24 @@ export default function ProveedoresPage() {
                   <Label htmlFor="telefono">Teléfono *</Label>
                   <Input
                     id="telefono"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                    {...form.register('telefono')}
                     placeholder="555-1234-567"
                   />
+                  {form.formState.errors.telefono && (
+                    <p className="text-sm text-destructive">{form.formState.errors.telefono.message}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    {...form.register('email')}
                     placeholder="ventas@proveedor.com.mx"
                   />
+                  {form.formState.errors.email && (
+                    <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -209,8 +219,7 @@ export default function ProveedoresPage() {
                 <Label htmlFor="direccion">Dirección</Label>
                 <Input
                   id="direccion"
-                  value={formData.direccion}
-                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                  {...form.register('direccion')}
                   placeholder="Av. Industria 456, León, Guanajuato"
                 />
               </div>
@@ -219,18 +228,19 @@ export default function ProveedoresPage() {
                 <Label htmlFor="rfc">RFC</Label>
                 <Input
                   id="rfc"
-                  value={formData.rfc}
-                  onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
+                  {...form.register('rfc')}
                   placeholder="ABC890123-XYZ"
                 />
+                {form.formState.errors.rfc && (
+                  <p className="text-sm text-destructive">{form.formState.errors.rfc.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="categorias">Categorías (separadas por coma)</Label>
                 <Textarea
                   id="categorias"
-                  value={formData.categorias}
-                  onChange={(e) => setFormData({ ...formData, categorias: e.target.value })}
+                  {...form.register('categorias')}
                   placeholder="Frenos, Suspensión, Motor"
                   rows={2}
                 />
@@ -239,8 +249,8 @@ export default function ProveedoresPage() {
               <div className="flex items-center space-x-2">
                 <Switch
                   id="activo"
-                  checked={formData.activo}
-                  onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                  checked={form.watch('activo')}
+                  onCheckedChange={(checked) => form.setValue('activo', checked)}
                 />
                 <Label htmlFor="activo">Proveedor Activo</Label>
               </div>
@@ -249,7 +259,7 @@ export default function ProveedoresPage() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSaveSupplier}>
+              <Button onClick={form.handleSubmit(onSubmit)}>
                 {editingSupplier ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>
@@ -352,6 +362,7 @@ export default function ProveedoresPage() {
                     size="sm"
                     onClick={() => handleOpenDialog(supplier)}
                     className="flex-1 touch-target"
+                    aria-label={`Editar proveedor ${supplier.nombre}`}
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     Editar
@@ -361,6 +372,7 @@ export default function ProveedoresPage() {
                     size="sm"
                     onClick={() => handleDeleteSupplier(supplier.id)}
                     className="touch-target"
+                    aria-label={`Eliminar proveedor ${supplier.nombre}`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -382,6 +394,7 @@ export default function ProveedoresPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </main>
   );
 }

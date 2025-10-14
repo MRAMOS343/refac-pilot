@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { mockTeams, mockWarehouses } from "@/data/mockData";
+import { useData } from '@/contexts/DataContext';
 import { Team } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLoadingState } from "@/hooks/useLoadingState";
@@ -15,7 +15,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { showSuccessToast, showErrorToast } from "@/utils/toastHelpers";
 
 export default function EquiposPage() {
-  const [teams, setTeams] = useState<Team[]>(mockTeams);
+  const { teams: initialTeams, warehouses } = useData();
+  const [teams, setTeams] = useState<Team[]>(initialTeams);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
@@ -104,7 +105,8 @@ export default function EquiposPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <main role="main" aria-label="Contenido principal">
+      <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Equipos de Trabajo</h1>
@@ -171,7 +173,7 @@ export default function EquiposPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Sin sucursal</SelectItem>
-                    {mockWarehouses.map(w => (
+                    {warehouses.map(w => (
                       <SelectItem key={w.id} value={w.id}>{w.nombre}</SelectItem>
                     ))}
                   </SelectContent>
@@ -248,7 +250,7 @@ export default function EquiposPage() {
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-1">Sucursal</p>
                   <Badge variant="outline">
-                    {mockWarehouses.find(w => w.id === team.warehouseId)?.nombre}
+                    {warehouses.find(w => w.id === team.warehouseId)?.nombre}
                   </Badge>
                 </div>
               )}
@@ -275,8 +277,9 @@ export default function EquiposPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 btn-hover"
+                  className="flex-1 btn-hover touch-target"
                   onClick={() => handleOpenDialog(team)}
+                  aria-label={`Editar equipo ${team.nombre}`}
                 >
                   <Edit className="w-3 h-3 mr-1" />
                   Editar
@@ -284,8 +287,9 @@ export default function EquiposPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="btn-hover"
+                  className="btn-hover touch-target"
                   onClick={() => handleDeleteTeam(team.id)}
+                  aria-label={`Eliminar equipo ${team.nombre}`}
                 >
                   <Trash2 className="w-3 h-3" />
                 </Button>
@@ -307,6 +311,7 @@ export default function EquiposPage() {
           }}
         />
       )}
-    </div>
+      </div>
+    </main>
   );
 }

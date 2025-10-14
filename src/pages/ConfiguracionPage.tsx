@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
+import { userProfileSchema, UserProfileFormData } from '@/schemas/userProfileSchema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -14,11 +17,14 @@ import { showSuccessToast } from "@/utils/toastHelpers";
 export default function ConfiguracionPage() {
   const { currentUser, updateUserRole } = useAuth();
   
-  // Estado para Perfil de Usuario
-  const [userProfile, setUserProfile] = useState({
-    nombre: currentUser?.nombre || "",
-    email: currentUser?.email || "",
-    telefono: "",
+  // Formulario de Perfil con validación
+  const profileForm = useForm<UserProfileFormData>({
+    resolver: zodResolver(userProfileSchema),
+    defaultValues: {
+      nombre: currentUser?.nombre || "",
+      email: currentUser?.email || "",
+      telefono: ""
+    }
   });
 
   // Estado para Configuración de Empresa
@@ -44,9 +50,9 @@ export default function ConfiguracionPage() {
     reportesDiarios: true,
   });
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = profileForm.handleSubmit((data: UserProfileFormData) => {
     showSuccessToast("Perfil actualizado", "Los cambios se han guardado correctamente.");
-  };
+  });
 
   const handleSaveCompany = () => {
     showSuccessToast("Configuración de empresa actualizada", "Los cambios se han guardado correctamente.");
@@ -61,7 +67,8 @@ export default function ConfiguracionPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <main role="main" aria-label="Contenido principal">
+      <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Configuración</h1>
         <p className="text-muted-foreground">
@@ -108,28 +115,34 @@ export default function ConfiguracionPage() {
                   <Label htmlFor="nombre">Nombre completo</Label>
                   <Input
                     id="nombre"
-                    value={userProfile.nombre}
-                    onChange={(e) => setUserProfile({ ...userProfile, nombre: e.target.value })}
+                    {...profileForm.register('nombre')}
                   />
+                  {profileForm.formState.errors.nombre && (
+                    <p className="text-sm text-destructive">{profileForm.formState.errors.nombre.message}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
-                    value={userProfile.email}
-                    onChange={(e) => setUserProfile({ ...userProfile, email: e.target.value })}
+                    {...profileForm.register('email')}
                   />
+                  {profileForm.formState.errors.email && (
+                    <p className="text-sm text-destructive">{profileForm.formState.errors.email.message}</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="telefono">Teléfono</Label>
                 <Input
                   id="telefono"
-                  value={userProfile.telefono}
-                  onChange={(e) => setUserProfile({ ...userProfile, telefono: e.target.value })}
+                  {...profileForm.register('telefono')}
                   placeholder="55-1234-5678"
                 />
+                {profileForm.formState.errors.telefono && (
+                  <p className="text-sm text-destructive">{profileForm.formState.errors.telefono.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Rol actual</Label>
@@ -451,6 +464,7 @@ export default function ConfiguracionPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </main>
   );
 }

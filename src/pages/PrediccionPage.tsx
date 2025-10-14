@@ -5,9 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp, AlertTriangle, BarChart3, Calendar } from 'lucide-react';
-import { mockProducts, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
+import { LazyLineChart } from '@/components/charts/LazyLineChart';
+import { useData } from '@/contexts/DataContext';
 import { User, ChartDataPoint, ForecastData } from '../types';
 import { addWeeks, format, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,7 +21,8 @@ interface ContextType {
 
 export default function PrediccionPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
-  const [selectedProduct, setSelectedProduct] = useState<string>(mockProducts[0]?.id || '');
+  const { products, warehouses, getProductById, getWarehouseById } = useData();
+  const [selectedProduct, setSelectedProduct] = useState<string>(products[0]?.id || '');
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(currentWarehouse);
   const [horizon, setHorizon] = useState<string>('8');
   const { isLoading } = useLoadingState({ minLoadingTime: 800 });
@@ -133,7 +134,8 @@ export default function PrediccionPage() {
   const selectedWarehouseData = getWarehouseById(selectedWarehouse);
 
   return (
-    <div className="space-y-6">
+    <main role="main" aria-label="Contenido principal">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -174,7 +176,7 @@ export default function PrediccionPage() {
                   <SelectValue placeholder="Seleccionar producto" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockProducts.map(product => (
+                  {products.map(product => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.sku} - {product.nombre}
                     </SelectItem>
@@ -190,7 +192,7 @@ export default function PrediccionPage() {
                   <SelectValue placeholder="Seleccionar sucursal" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockWarehouses.map(warehouse => (
+                  {warehouses.map(warehouse => (
                     <SelectItem key={warehouse.id} value={warehouse.id}>
                       {warehouse.nombre}
                     </SelectItem>
@@ -294,84 +296,23 @@ export default function PrediccionPage() {
           </CardHeader>
           <CardContent>
             <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="label" 
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }}
-                  label={{ value: 'Unidades', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip 
-                  formatter={(value: number, name: string) => {
-                    const formatValue = value?.toFixed(2) || '0';
-                    const names = {
-                      value: 'Histórico',
-                      forecast: 'Pronóstico',
-                      upperBound: 'Límite Superior',
-                      lowerBound: 'Límite Inferior'
-                    };
-                    return [formatValue, names[name as keyof typeof names] || name];
-                  }}
-                  labelFormatter={(label) => `Semana: ${label}`}
-                />
-                
-                {/* Reference line to separate historical from forecast */}
-                <ReferenceLine 
-                  x={chartData[forecastData.historical.length - 1]?.label} 
-                  stroke="hsl(var(--muted-foreground))" 
-                  strokeDasharray="5 5"
-                />
-                
-                {/* Historical data */}
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
-                  connectNulls={false}
-                />
-                
-                {/* Forecast data */}
-                <Line 
-                  type="monotone" 
-                  dataKey="forecast" 
-                  stroke="hsl(var(--destructive))" 
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={{ fill: 'hsl(var(--destructive))', strokeWidth: 0, r: 3 }}
-                  connectNulls={false}
-                />
-                
-                {/* Confidence bands */}
-                <Line 
-                  type="monotone" 
-                  dataKey="upperBound" 
-                  stroke="hsl(var(--muted-foreground))" 
-                  strokeWidth={1}
-                  strokeDasharray="2 2"
-                  dot={false}
-                  connectNulls={false}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="lowerBound" 
-                  stroke="hsl(var(--muted-foreground))" 
-                  strokeWidth={1}
-                  strokeDasharray="2 2"
-                  dot={false}
-                  connectNulls={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
+              <LazyLineChart 
+                data={chartData}
+                lines={[
+                  { dataKey: 'value', stroke: 'hsl(var(--primary))', name: 'Histórico', strokeWidth: 2, dot: { fill: 'hsl(var(--primary))', r: 3 } },
+                  { dataKey: 'forecast', stroke: 'hsl(var(--destructive))', name: 'Pronóstico', strokeWidth: 2, strokeDasharray: '5 5', dot: { fill: 'hsl(var(--destructive))', r: 3 } },
+                  { dataKey: 'upperBound', stroke: 'hsl(var(--muted-foreground))', name: 'Límite Superior', strokeDasharray: '2 2', dot: false },
+                  { dataKey: 'lowerBound', stroke: 'hsl(var(--muted-foreground))', name: 'Límite Inferior', strokeDasharray: '2 2', dot: false }
+                ]}
+                xAxisKey="label"
+                yAxisLabel="Unidades"
+                height={384}
+              />
+            </div>
+          </CardContent>
       </Card>
       )}
-    </div>
+      </div>
+    </main>
   );
 }

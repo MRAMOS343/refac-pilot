@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Search, Moon, Sun, Bell } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,7 +51,28 @@ export function AppTopbar({
   isDarkMode,
   onToggleDarkMode,
 }: AppTopbarProps) {
+  const location = useLocation();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const breadcrumbNames: Record<string, string> = {
+    dashboard: 'Dashboard',
+    ventas: 'Ventas',
+    inventario: 'Inventario',
+    compras: 'Compras',
+    prediccion: 'Predicción',
+    proveedores: 'Proveedores',
+    equipos: 'Equipos',
+    soporte: 'Soporte',
+    configuracion: 'Configuración'
+  };
+
+  const dynamicBreadcrumbs = useMemo(() => {
+    const pathnames = location.pathname.split('/').filter(x => x);
+    return pathnames.map((name, index) => ({
+      label: breadcrumbNames[name] || name,
+      href: index < pathnames.length - 1 ? `/${pathnames.slice(0, index + 1).join('/')}` : undefined
+    }));
+  }, [location.pathname]);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -71,11 +93,11 @@ export function AppTopbar({
         <div className="flex-1 min-w-0 py-1">
           <Breadcrumb>
             <BreadcrumbList className="flex-wrap">
-              {breadcrumbs.map((crumb, index) => (
+              {dynamicBreadcrumbs.map((crumb, index) => (
                 <div key={index} className="flex items-center">
                   {index > 0 && <BreadcrumbSeparator />}
                   <BreadcrumbItem>
-                    {crumb.href && index < breadcrumbs.length - 1 ? (
+                    {crumb.href && index < dynamicBreadcrumbs.length - 1 ? (
                       <BreadcrumbLink href={crumb.href} className="truncate max-w-[200px]">
                         {crumb.label}
                       </BreadcrumbLink>

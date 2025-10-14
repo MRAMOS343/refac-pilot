@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShoppingCart, AlertTriangle, Package, TrendingDown, Download } from 'lucide-react';
-import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
+import { useData } from '@/contexts/DataContext';
+import { useProductCache } from '@/hooks/useProductCache';
 import { User, PurchaseSuggestion } from '../types';
 import { useLoadingState } from '@/hooks/useLoadingState';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
@@ -25,6 +26,8 @@ interface ContextType {
 
 export default function ComprasPage() {
   const { currentWarehouse, searchQuery, currentUser } = useOutletContext<ContextType>();
+  const { inventory, getProductById, getWarehouseById } = useData();
+  const { getProductName } = useProductCache();
   const [leadTimeDias, setLeadTimeDias] = useState<number>(7);
   const [safetyStockPercent, setSafetyStockPercent] = useState<number>(20);
   const [horizonteSemanas, setHorizonteSemanas] = useState<number>(4);
@@ -34,8 +37,8 @@ export default function ComprasPage() {
   // Generate purchase suggestions
   const purchaseSuggestions: PurchaseSuggestion[] = useMemo(() => {
     const warehouseInventory = currentWarehouse === 'all'
-      ? mockInventory
-      : mockInventory.filter(inv => inv.warehouseId === currentWarehouse);
+      ? inventory
+      : inventory.filter(inv => inv.warehouseId === currentWarehouse);
     
     return warehouseInventory
       .map(inv => {
@@ -130,7 +133,11 @@ export default function ComprasPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <main role="main" aria-label="Contenido principal">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {isLoading ? "Cargando sugerencias de compra..." : `${purchaseSuggestions.length} sugerencias encontradas`}
+      </div>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -140,7 +147,7 @@ export default function ComprasPage() {
           </p>
         </div>
         <div className="flex gap-2 self-end sm:self-auto">
-          <Button onClick={handleExport} variant="outline" size="sm" className="btn-hover touch-target">
+          <Button onClick={handleExport} variant="outline" size="sm" className="btn-hover touch-target" aria-label="Exportar sugerencias de compra a CSV">
             <Download className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Exportar</span>
           </Button>
@@ -149,6 +156,7 @@ export default function ComprasPage() {
             size="sm"
             disabled={currentUser.role === 'cajero' || purchaseSuggestions.length === 0}
             className="btn-hover touch-target"
+            aria-label="Generar pre-orden de compra"
           >
             <ShoppingCart className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Generar Pre-orden</span>
@@ -358,6 +366,7 @@ export default function ComprasPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </main>
   );
 }

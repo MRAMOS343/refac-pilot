@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockTickets, mockTicketComments } from '@/data/mockData';
+import { useData } from '@/contexts/DataContext';
 import { Ticket, TicketStatus, TicketPriority, TicketCategory } from '@/types';
 import { Plus, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useLoadingState } from '@/hooks/useLoadingState';
@@ -18,7 +18,8 @@ import { showInfoToast } from '@/utils/toastHelpers';
 
 export default function SoportePage() {
   const { currentUser } = useAuth();
-  const [tickets, setTickets] = useLocalStorage('autoparts_tickets', mockTickets);
+  const { tickets: initialTickets } = useData();
+  const [tickets, setTickets] = useLocalStorage('autoparts_tickets', initialTickets);
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | undefined>();
   const { isLoading } = useLoadingState({ minLoadingTime: 500 });
@@ -102,7 +103,8 @@ export default function SoportePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <main role="main" aria-label="Contenido principal">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -111,7 +113,7 @@ export default function SoportePage() {
             Gestiona tus tickets y consultas
           </p>
         </div>
-        <Button onClick={() => setTicketModalOpen(true)} className="gap-2 btn-hover">
+        <Button onClick={() => setTicketModalOpen(true)} className="gap-2 btn-hover" aria-label="Crear nuevo ticket de soporte">
           <Plus className="h-4 w-4" />
           Nuevo Ticket
         </Button>
@@ -232,6 +234,7 @@ export default function SoportePage() {
         ticket={selectedTicket}
         onSubmit={handleCreateTicket}
       />
-    </div>
+      </div>
+    </main>
   );
 }

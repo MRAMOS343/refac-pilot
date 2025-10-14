@@ -335,10 +335,11 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
+                aria-label="Cancelar edición"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} aria-label={isSubmitting ? "Guardando producto..." : (product ? "Actualizar producto" : "Crear producto")}>
                 {isSubmitting ? "Guardando..." : (product ? "Actualizar" : "Crear")}
               </Button>
             </DialogFooter>
