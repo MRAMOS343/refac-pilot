@@ -1,5 +1,4 @@
-import { useState, useMemo, memo } from "react";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -54,7 +53,7 @@ interface PropiedadesDataTable<T> {
 
 type DireccionOrdenamiento = 'asc' | 'desc' | null;
 
-function DataTableComponent<T extends Record<string, any>>({
+export function DataTable<T extends Record<string, any>>({
   data,
   columns,
   loading = false,
@@ -67,7 +66,6 @@ function DataTableComponent<T extends Record<string, any>>({
 }: PropiedadesDataTable<T>) {
   // Estados del componente para manejar búsqueda, paginación y ordenamiento
   const [consultaBusqueda, setConsultaBusqueda] = useState("");
-  const debouncedSearchQuery = useDebounce(consultaBusqueda, 300);
   const [paginaActual, setPaginaActual] = useState(1);
   const [campoOrdenamiento, setCampoOrdenamiento] = useState<keyof T | string | null>(null);
   const [direccionOrdenamiento, setDireccionOrdenamiento] = useState<DireccionOrdenamiento>(null);
@@ -77,11 +75,11 @@ function DataTableComponent<T extends Record<string, any>>({
   const datosProcesados = useMemo(() => {
     let filtrados = data;
 
-    // Filtrado por búsqueda con debounce
-    if (debouncedSearchQuery && searchable) {
+    // Filtrado por búsqueda
+    if (consultaBusqueda && searchable) {
       filtrados = data.filter(fila =>
         Object.values(fila).some(valor =>
-          String(valor).toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+          String(valor).toLowerCase().includes(consultaBusqueda.toLowerCase())
         )
       );
     }
@@ -100,7 +98,7 @@ function DataTableComponent<T extends Record<string, any>>({
     }
 
     return filtrados;
-  }, [data, debouncedSearchQuery, searchable, campoOrdenamiento, direccionOrdenamiento]);
+  }, [data, consultaBusqueda, searchable, campoOrdenamiento, direccionOrdenamiento]);
 
   // Paginación
   const totalPaginas = Math.ceil(datosProcesados.length / filasPorPagina);
@@ -180,14 +178,6 @@ function DataTableComponent<T extends Record<string, any>>({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Accessibility: Screen reader announcements */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {loading 
-          ? `Cargando ${searchable ? 'resultados de búsqueda' : 'datos'}...` 
-          : `Mostrando ${datosProcesados.length} ${datosProcesados.length === 1 ? 'resultado' : 'resultados'}${totalPaginas > 1 ? `. Página ${paginaActual} de ${totalPaginas}` : ''}.`
-        }
-      </div>
-
       {/* Search and Controls */}
       {searchable && (
         <div className="flex items-center gap-2">
@@ -354,6 +344,3 @@ function DataTableComponent<T extends Record<string, any>>({
     </div>
   );
 }
-
-// Memoized export for performance
-export const DataTable = memo(DataTableComponent) as <T extends Record<string, any>>(props: PropiedadesDataTable<T>) => JSX.Element;

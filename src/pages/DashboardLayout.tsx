@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '../components/layout/AppSidebar';
 import { AppTopbar } from '../components/layout/AppTopbar';
 import { useAuth } from '../hooks/useAuth';
@@ -14,10 +14,7 @@ const routeLabels: Record<string, string> = {
   '/dashboard/ventas': 'Ventas', 
   '/dashboard/prediccion': 'Predicción de Ventas',
   '/dashboard/compras': 'Compra Sugerida',
-  '/dashboard/equipos': 'Equipos',
-  '/dashboard/proveedores': 'Proveedores',
-  '/dashboard/configuracion': 'Configuración',
-  '/dashboard/soporte': 'Soporte'
+  '/configuracion': 'Configuración'
 };
 
 export function DashboardLayout() {
@@ -43,12 +40,6 @@ export function DashboardLayout() {
     
     let currentPath = '';
     pathParts.forEach((part) => {
-      // Skip "dashboard" as it's just a technical route, not a navigation level
-      if (part === 'dashboard') {
-        currentPath += `/${part}`;
-        return;
-      }
-      
       currentPath += `/${part}`;
       const label = routeLabels[currentPath] || part;
       breadcrumbs.push({ label, href: currentPath });
@@ -68,18 +59,11 @@ export function DashboardLayout() {
 
   const handleWarehouseChange = (warehouseId: string) => {
     setCurrentWarehouse(warehouseId);
-    if (warehouseId === 'all') {
-      toast({
-        title: "Vista global",
-        description: "Mostrando información de todas las sucursales",
-      });
-    } else {
-      const warehouse = mockWarehouses.find(w => w.id === warehouseId);
-      toast({
-        title: "Sucursal cambiada",
-        description: `Ahora trabajando en ${warehouse?.nombre}`,
-      });
-    }
+    const warehouse = mockWarehouses.find(w => w.id === warehouseId);
+    toast({
+      title: "Sucursal cambiada",
+      description: `Ahora trabajando en ${warehouse?.nombre}`,
+    });
   };
 
   const handleRoleChange = (role: 'admin' | 'gerente' | 'cajero') => {
@@ -159,11 +143,11 @@ export function DashboardLayout() {
   }
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar currentUser={currentUser} onLogout={handleLogout} />
         
-        <SidebarInset className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0">
           <AppTopbar
             breadcrumbs={generateBreadcrumbs()}
             warehouses={mockWarehouses}
@@ -176,14 +160,14 @@ export function DashboardLayout() {
             onToggleDarkMode={handleToggleDarkMode}
           />
           
-          <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
+          <main className="flex-1 p-6 overflow-auto">
             <Outlet context={{ 
               currentWarehouse, 
               searchQuery, 
               currentUser 
             }} />
           </main>
-        </SidebarInset>
+        </div>
       </div>
     </SidebarProvider>
   );

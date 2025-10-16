@@ -1,31 +1,17 @@
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { lazy, Suspense } from "react";
 import App from "./App.tsx";
 import "./index.css";
+import Index from "./pages/Index";
+import { DashboardLayout } from "./pages/DashboardLayout";
+import DashboardPage from "./pages/DashboardPage";
+import InventarioPage from "./pages/InventarioPage";
+import VentasPage from "./pages/VentasPage";
+import ComprasPage from "./pages/ComprasPage";
+import PrediccionPage from "./pages/PrediccionPage";
+import NotFound from "./pages/NotFound";
+import LoginPage from "./pages/LoginPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-
-// Lazy load pages for better initial bundle size
-const Index = lazy(() => import("./pages/Index"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const DashboardLayout = lazy(() => import("./pages/DashboardLayout").then(m => ({ default: m.DashboardLayout })));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const InventarioPage = lazy(() => import("./pages/InventarioPage"));
-const VentasPage = lazy(() => import("./pages/VentasPage"));
-const ComprasPage = lazy(() => import("./pages/ComprasPage"));
-const PrediccionPage = lazy(() => import("./pages/PrediccionPage"));
-const EquiposPage = lazy(() => import("./pages/EquiposPage"));
-const ProveedoresPage = lazy(() => import("./pages/ProveedoresPage"));
-const ConfiguracionPage = lazy(() => import("./pages/ConfiguracionPage"));
-const SoportePage = lazy(() => import("./pages/SoportePage"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-
-// Loading fallback component
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-  </div>
-);
 
 const router = createBrowserRouter([
   {
@@ -34,111 +20,45 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <Index />
-          </Suspense>
-        ),
+        element: <Index />,
       },
       {
         path: "login",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <LoginPage />
-          </Suspense>
-        ),
+        element: <LoginPage />,
       },
       {
         path: "dashboard",
         element: (
           <ProtectedRoute>
-            <Suspense fallback={<PageLoader />}>
-              <DashboardLayout />
-            </Suspense>
+            <DashboardLayout />
           </ProtectedRoute>
         ),
         children: [
           {
             index: true,
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <DashboardPage />
-              </Suspense>
-            ),
+            element: <DashboardPage />,
           },
           {
             path: "inventario",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <InventarioPage />
-              </Suspense>
-            ),
+            element: <InventarioPage />,
           },
           {
             path: "ventas",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <VentasPage />
-              </Suspense>
-            ),
+            element: <VentasPage />,
           },
           {
             path: "compras",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <ComprasPage />
-              </Suspense>
-            ),
+            element: <ComprasPage />,
           },
           {
             path: "prediccion",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <PrediccionPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "equipos",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <EquiposPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "proveedores",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <ProveedoresPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "configuracion",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <ConfiguracionPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "soporte",
-            element: (
-              <Suspense fallback={<PageLoader />}>
-                <SoportePage />
-              </Suspense>
-            ),
+            element: <PrediccionPage />,
           },
         ],
       },
       {
         path: "*",
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <NotFound />
-          </Suspense>
-        ),
+        element: <NotFound />,
       },
     ],
   },

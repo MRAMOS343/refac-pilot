@@ -18,7 +18,7 @@ export default function LoginPage() {
   }
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <LoginForm onLogin={login} />
     </div>
   );
