@@ -58,7 +58,7 @@ const KPICardComponent = ({
   };
 
   return <div className={cn(
-      "bg-card p-6 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 group",
+      "bg-card p-6 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.02] group",
       className
     )}>
       <div className="flex items-start justify-between">
