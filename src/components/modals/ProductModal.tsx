@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { safeParseFloat, safeParseInt } from "@/utils/validation";
+import { logger } from "@/utils/logger";
 import {
   Dialog,
   DialogContent,
@@ -30,21 +31,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Product } from "@/types";
-
-const productSchema = z.object({
-  sku: z.string().min(1, "SKU es requerido").max(20, "SKU debe tener máximo 20 caracteres"),
-  nombre: z.string().min(1, "Nombre es requerido").max(100, "Nombre debe tener máximo 100 caracteres"),
-  marca: z.string().min(1, "Marca es requerida").max(50, "Marca debe tener máximo 50 caracteres"),
-  categoria: z.string().min(1, "Categoría es requerida"),
-  unidad: z.string().min(1, "Unidad es requerida"),
-  precio: z.number().min(0.01, "El precio debe ser mayor a 0"),
-  iva: z.number().min(0, "IVA no puede ser negativo").max(100, "IVA no puede ser mayor a 100%"),
-  reorderPoint: z.number().min(0, "Punto de reorden no puede ser negativo"),
-  safetyStock: z.number().min(0, "Stock de seguridad no puede ser negativo"),
-  descripcion: z.string().max(500, "Descripción debe tener máximo 500 caracteres").optional(),
-});
-
-type ProductFormData = z.infer<typeof productSchema>;
+import { productSchema, ProductFormData } from "@/schemas";
+import { CATEGORIAS_PRODUCTO, UNIDADES_MEDIDA, IVA_PREDETERMINADO } from "@/constants";
 
 interface ProductModalProps {
   open: boolean;
@@ -52,15 +40,6 @@ interface ProductModalProps {
   product?: Product | null;
   onSave: (product: ProductFormData) => void;
 }
-
-const categorias = [
-  "Motor", "Suspensión", "Frenos", "Transmisión", "Eléctrico", 
-  "Carrocería", "Filtros", "Lubricantes", "Llantas", "Accesorios"
-];
-
-const unidades = [
-  "pza", "kit", "par", "litro", "galón", "metro", "caja", "juego"
-];
 
 export function ProductModal({ open, onOpenChange, product, onSave }: ProductModalProps) {
   const { toast } = useToast();
@@ -73,9 +52,9 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
       nombre: "",
       marca: "",
       categoria: "",
-      unidad: "pza",
+      unidad: UNIDADES_MEDIDA[0],
       precio: 0,
-      iva: 16,
+      iva: IVA_PREDETERMINADO,
       reorderPoint: 10,
       safetyStock: 5,
       descripcion: "",
@@ -104,9 +83,9 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
           nombre: "",
           marca: "",
           categoria: "",
-          unidad: "pza",
+          unidad: UNIDADES_MEDIDA[0],
           precio: 0,
-          iva: 16,
+          iva: IVA_PREDETERMINADO,
           reorderPoint: 10,
           safetyStock: 5,
           descripcion: "",
@@ -118,13 +97,16 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
     try {
+      logger.info('Guardando producto', { nombre: data.nombre, sku: data.sku });
       await onSave(data);
       toast({
         title: product ? "Producto actualizado" : "Producto creado",
         description: `${data.nombre} ha sido ${product ? "actualizado" : "creado"} exitosamente.`,
       });
+      logger.info('Producto guardado exitosamente', { nombre: data.nombre });
       onOpenChange(false);
     } catch (error) {
+      logger.error('Error al guardar producto:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al guardar el producto.",
@@ -160,7 +142,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                   <FormItem>
                     <FormLabel>SKU *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: MOT-001" {...field} />
+                      <Input placeholder="Ej: MOT-001" autoFocus {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -180,7 +162,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {unidades.map((unidad) => (
+                        {UNIDADES_MEDIDA.map((unidad) => (
                           <SelectItem key={unidad} value={unidad}>
                             {unidad}
                           </SelectItem>
@@ -235,7 +217,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categorias.map((categoria) => (
+                        {CATEGORIAS_PRODUCTO.map((categoria) => (
                           <SelectItem key={categoria} value={categoria}>
                             {categoria}
                           </SelectItem>
@@ -261,7 +243,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         step="0.01" 
                         placeholder="0.00"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(safeParseFloat(e.target.value, 0))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -281,7 +263,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         step="0.01" 
                         placeholder="16"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(safeParseFloat(e.target.value, 0))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -300,7 +282,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                         type="number" 
                         placeholder="10"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(safeParseInt(e.target.value, 0))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -320,7 +302,7 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                       type="number" 
                       placeholder="5"
                       {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      onChange={(e) => field.onChange(safeParseInt(e.target.value, 0))}
                     />
                   </FormControl>
                   <FormMessage />
@@ -353,10 +335,11 @@ export function ProductModal({ open, onOpenChange, product, onSave }: ProductMod
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
+                aria-label="Cancelar edición"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} aria-label={isSubmitting ? "Guardando producto..." : (product ? "Actualizar producto" : "Crear producto")}>
                 {isSubmitting ? "Guardando..." : (product ? "Actualizar" : "Crear")}
               </Button>
             </DialogFooter>

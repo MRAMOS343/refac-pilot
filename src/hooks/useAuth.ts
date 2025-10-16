@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types';
 import { mockUsers } from '../data/mockData';
+import { userSchema } from '@/schemas/userSchema';
+import { logger } from '@/utils/logger';
 
 export function useAuth() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -11,8 +13,20 @@ export function useAuth() {
     const storedUser = localStorage.getItem('autoparts_user');
     if (storedUser) {
       try {
-        setCurrentUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        
+        // Validar con Zod para prevenir datos corruptos
+        const validationResult = userSchema.safeParse(parsedUser);
+        
+        if (validationResult.success) {
+          setCurrentUser(validationResult.data as User);
+          logger.info('Usuario cargado desde localStorage', { userId: validationResult.data.id });
+        } else {
+          logger.warn('Usuario en localStorage tiene datos inválidos, limpiando...', validationResult.error.errors);
+          localStorage.removeItem('autoparts_user');
+        }
       } catch (error) {
+        logger.error('Error al parsear usuario de localStorage', error);
         localStorage.removeItem('autoparts_user');
       }
     }

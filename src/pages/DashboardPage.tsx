@@ -1,13 +1,23 @@
-import { useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { KPICard } from "@/components/ui/kpi-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockSales, mockInventory, mockProducts, mockWarehouses } from "@/data/mockData";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
+import { LazyLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "@/components/charts/LazyLineChart";
+import { LazyPieChart, Pie, Cell } from "@/components/charts/LazyPieChart";
 import { TrendingUp, ShoppingCart, Package, DollarSign, AlertTriangle, Plus } from "lucide-react";
-import { Sale, User, KPIData } from "@/types";
+import { User, KPIData } from "@/types";
+import { ProductModal } from "@/components/modals/ProductModal";
+import { kpiService } from "@/services/kpiService";
+import { filterService } from "@/services/filterService";
+import { COLORES_GRAFICOS } from "@/constants";
+import { useLoadingState } from "@/hooks/useLoadingState";
+import { KPISkeleton } from "@/components/ui/kpi-skeleton";
+import { ChartSkeleton } from "@/components/ui/chart-skeleton";
+import { SUCCESS_MESSAGES } from "@/constants/messages";
+import { useData } from "@/contexts/DataContext";
+import { toast } from "@/hooks/use-toast";
 
 interface ContextType {
   currentWarehouse: string;
@@ -17,45 +27,18 @@ interface ContextType {
 
 export default function DashboardPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
+  const navigate = useNavigate();
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const { isLoading } = useLoadingState({ minLoadingTime: 600 });
+  const { sales, inventory, products, warehouses } = useData();
 
-  // Cálculo de KPIs globales del negocio
+  // Cálculo de KPIs globales del negocio usando servicio
   const kpisGlobales = useMemo((): KPIData[] => {
-    const ventasTotales = mockSales.reduce((suma, venta) => suma + venta.total, 0);
-    const totalProductos = mockProducts.length;
-    const productosStockBajo = mockInventory.filter(inv => inv.onHand <= 10).length;
-    const ticketPromedio = ventasTotales / mockSales.length;
-
-    return [
-      {
-        label: "Ventas Totales",
-        value: ventasTotales,
-        format: "currency",
-        change: 12.5,
-        changeType: "positive"
-      },
-      {
-        label: "Productos Únicos",
-        value: totalProductos,
-        format: "number",
-        change: 2.1,
-        changeType: "positive"
-      },
-      {
-        label: "Ticket Promedio",
-        value: ticketPromedio,
-        format: "currency",
-        change: -1.2,
-        changeType: "negative"
-      },
-      {
-        label: "Stock Bajo",
-        value: productosStockBajo,
-        format: "number",
-        change: 5.3,
-        changeType: "negative"
-      }
-    ];
-  }, []);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
+    const inventarioFiltrado = filterService.filterInventoryByWarehouse(inventory, currentWarehouse);
+    
+    return kpiService.calculateGlobalKPIs(ventasFiltradas, inventarioFiltrado, products);
+  }, [currentWarehouse, sales, inventory, products]);
 
   // Datos de tendencia de ventas (últimos 7 días) para el gráfico lineal
   const datosTendenciaVentas = useMemo(() => {
@@ -65,9 +48,10 @@ export default function DashboardPage() {
       return fecha.toISOString().split('T')[0];
     });
 
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
+
     return ultimos7Dias.map(fecha => {
-      // Sumar todas las ventas de ese día específico
-      const totalDia = mockSales
+      const totalDia = ventasFiltradas
         .filter(venta => venta.fechaISO.startsWith(fecha))
         .reduce((suma, venta) => suma + venta.total, 0);
       
@@ -76,46 +60,37 @@ export default function DashboardPage() {
         value: totalDia
       };
     });
-  }, []);
+  }, [currentWarehouse, sales]);
 
-  // Distribución de métodos de pago para gráfico circular
+  // Distribución de métodos de pago usando servicio
   const datosMetodosPago = useMemo(() => {
-    const metodos = mockSales.reduce((acumulador, venta) => {
-      acumulador[venta.metodoPago] = (acumulador[venta.metodoPago] || 0) + 1;
-      return acumulador;
-    }, {} as Record<string, number>);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
+    return kpiService.calculatePaymentMethodDistribution(ventasFiltradas);
+  }, [currentWarehouse, sales]);
 
-    return Object.entries(metodos).map(([metodo, cantidad]) => ({
-      name: metodo.charAt(0).toUpperCase() + metodo.slice(1),
-      value: cantidad,
-      percentage: (cantidad / mockSales.length * 100).toFixed(1)
-    }));
-  }, []);
-
-  // Productos más vendidos por ingresos generados
+  // Productos más vendidos usando servicio
   const productosMasVendidos = useMemo(() => {
-    const ventasProductos = mockSales.reduce((acumulador, venta) => {
-      venta.items.forEach(item => {
-        const producto = mockProducts.find(p => p.id === item.productId);
-        if (producto) {
-          if (!acumulador[producto.id]) {
-            acumulador[producto.id] = { producto, totalVendido: 0, ingresos: 0 };
-          }
-          acumulador[producto.id].totalVendido += item.qty;
-          acumulador[producto.id].ingresos += item.qty * item.unitPrice;
-        }
-      });
-      return acumulador;
-    }, {} as Record<string, { producto: any; totalVendido: number; ingresos: number }>);
+    const ventasFiltradas = filterService.filterSalesByWarehouse(sales, currentWarehouse);
+    return kpiService.calculateTopProducts(ventasFiltradas, products, 5);
+  }, [currentWarehouse, sales, products]);
 
-    // Ordenar por ingresos y tomar los top 5
-    return Object.values(ventasProductos)
-      .sort((a, b) => b.ingresos - a.ingresos)
-      .slice(0, 5);
-  }, []);
+  const handleNewSale = () => {
+    navigate('/dashboard/ventas');
+  };
 
-  // Colores para los gráficos - usar tokens del tema
-  const COLORES = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+  const handleAddProduct = () => {
+    setProductModalOpen(true);
+  };
+
+  const handleSaveProduct = async (productData: any) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    toast({
+      title: "Producto creado",
+      description: SUCCESS_MESSAGES.PRODUCT_CREATED(productData.nombre),
+      className: "bg-success-light dark:bg-success-light border-success dark:border-success",
+    });
+    setProductModalOpen(false);
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -124,15 +99,19 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">
-            Resumen general del sistema - {mockWarehouses.find(w => w.id === currentWarehouse)?.nombre || 'Todas las sucursales'}
+            Resumen general del sistema - {
+              currentWarehouse === 'all' 
+                ? 'Todas las Sucursales' 
+                : warehouses.find(w => w.id === currentWarehouse)?.nombre || 'Sucursal no encontrada'
+            }
           </p>
         </div>
         <div className="flex gap-2">
-          <Button>
+          <Button onClick={handleNewSale} className="btn-hover">
             <Plus className="w-4 h-4 mr-2" />
             Nueva Venta
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleAddProduct} className="btn-hover">
             <Package className="w-4 h-4 mr-2" />
             Agregar Producto
           </Button>
@@ -141,56 +120,70 @@ export default function DashboardPage() {
 
       {/* Indicadores clave de rendimiento (KPIs) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpisGlobales.map((kpi, index) => (
-          <KPICard key={index} data={kpi} />
-        ))}
+        {isLoading ? (
+          <>
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+            <KPISkeleton />
+          </>
+        ) : (
+          kpisGlobales.map((kpi, index) => (
+            <KPICard key={index} data={kpi} className="animate-fade-in card-hover" />
+          ))
+        )}
       </div>
 
       {/* Fila de gráficos principales */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de tendencia de ventas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Tendencia de Ventas (7 días)
-            </CardTitle>
+        {isLoading ? (
+          <>
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </>
+        ) : (
+          <>
+            {/* Gráfico de tendencia de ventas */}
+            <Card className="card-hover animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Tendencia de Ventas (7 días)
+                </CardTitle>
             <CardDescription>
               Evolución de las ventas en los últimos 7 días
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={datosTendenciaVentas}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" className="text-muted-foreground" />
-                <YAxis className="text-muted-foreground" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                  formatter={(value: number) => [
-                    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value),
-                    'Ventas'
-                  ]}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <LazyLineChart data={datosTendenciaVentas} height={320}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="date" className="text-muted-foreground" />
+              <YAxis className="text-muted-foreground" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+                formatter={(value: number) => [
+                  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value),
+                  'Ventas'
+                ]}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="value" 
+                stroke="hsl(var(--primary))" 
+                strokeWidth={3}
+                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+              />
+            </LazyLineChart>
           </CardContent>
         </Card>
 
-        {/* Gráfico de métodos de pago */}
-        <Card>
-          <CardHeader>
+            {/* Gráfico de métodos de pago */}
+            <Card className="card-hover animate-fade-in">
+              <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
               Métodos de Pago
@@ -200,38 +193,62 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={datosMetodosPago}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percentage }) => `${name} ${percentage}%`}
-                >
-                  {datosMetodosPago.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORES[index % COLORES.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <LazyPieChart height={320}>
+              <Pie
+                data={datosMetodosPago}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                dataKey="value"
+                label={(entry) => {
+                  const RADIAN = Math.PI / 180;
+                  const { cx, cy, midAngle, outerRadius, name, percentage } = entry;
+                  const radius = outerRadius + 30;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  
+                  return (
+                    <text 
+                      x={x} 
+                      y={y} 
+                      fill="hsl(var(--foreground))"
+                      textAnchor={x > cx ? 'start' : 'end'} 
+                      dominantBaseline="central"
+                    >
+                      {`${name} ${percentage}%`}
+                    </text>
+                  );
+                }}
+              >
+                {datosMetodosPago.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORES_GRAFICOS[index % COLORES_GRAFICOS.length]} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))'
+                }}
+                itemStyle={{
+                  color: 'hsl(var(--foreground))'
+                }}
+                labelStyle={{
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+            </LazyPieChart>
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Sección inferior con información adicional */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Productos más vendidos */}
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
@@ -267,7 +284,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Sistema de alertas */}
-        <Card>
+        <Card className="card-hover animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
@@ -291,31 +308,39 @@ export default function DashboardPage() {
                 <Badge variant="destructive">Urgente</Badge>
               </div>
               
-              <div className="flex items-center gap-3 p-3 border border-yellow-200 rounded-lg bg-yellow-50 dark:bg-yellow-950/20">
-                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <div className="flex items-center gap-3 p-3 border border-warning/20 rounded-lg bg-warning/5">
+                <AlertTriangle className="w-5 h-5 text-warning" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Ventas en Declive</p>
                   <p className="text-xs text-muted-foreground">
                     El ticket promedio ha disminuido 1.2% esta semana
                   </p>
                 </div>
-                <Badge variant="secondary">Info</Badge>
+                <Badge variant="warning">Info</Badge>
               </div>
 
-              <div className="flex items-center gap-3 p-3 border border-blue-200 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+              <div className="flex items-center gap-3 p-3 border border-info/20 rounded-lg bg-info/5">
+                <TrendingUp className="w-5 h-5 text-info" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Crecimiento Positivo</p>
                   <p className="text-xs text-muted-foreground">
                     Las ventas totales han aumentado 12.5% este mes
                   </p>
                 </div>
-                <Badge className="bg-blue-100 text-blue-700">Good</Badge>
+                <Badge variant="info">Good</Badge>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Product Modal */}
+      <ProductModal
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        product={null}
+        onSave={handleSaveProduct}
+      />
     </div>
   );
 }
