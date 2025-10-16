@@ -278,8 +278,9 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
 
   // Use cached product name function from hook
 
-  // Cleanup al desmontar componente
+  // Cleanup al desmontar componente y configurar isMountedRef
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       logger.debug('SaleModal desmontado, cancelando operaciones pendientes');

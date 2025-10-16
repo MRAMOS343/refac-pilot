@@ -12,26 +12,28 @@ export function useSaleProducts() {
   const { toast } = useToast();
 
   const agregarProducto = useCallback((producto: Product) => {
-    const existente = productosAgregados.find((p) => p.productId === producto.id);
+    setProductosAgregados((prev) => {
+      const existente = prev.find((p) => p.productId === producto.id);
 
-    if (existente) {
-      toast({
-        title: "Producto duplicado",
-        description: `${producto.nombre} ya está en la venta. Ajusta la cantidad si necesitas más.`,
-        variant: "destructive",
-      });
-      return;
-    }
+      if (existente) {
+        toast({
+          title: "Producto duplicado",
+          description: `${producto.nombre} ya está en la venta. Ajusta la cantidad si necesitas más.`,
+          variant: "destructive",
+        });
+        return prev; // No cambiar estado si ya existe
+      }
 
-    const nuevoItem: SaleItem = {
-      productId: producto.id,
-      qty: 1,
-      unitPrice: producto.precio,
-      discount: 0,
-    };
+      const nuevoItem: SaleItem = {
+        productId: producto.id,
+        qty: 1,
+        unitPrice: producto.precio,
+        discount: 0,
+      };
 
-    setProductosAgregados((prev) => [...prev, nuevoItem]);
-  }, [productosAgregados, toast]);
+      return [...prev, nuevoItem];
+    });
+  }, [toast]);
 
   const eliminarProducto = useCallback((productoId: string) => {
     setProductosAgregados((prev) => prev.filter((p) => p.productId !== productoId));

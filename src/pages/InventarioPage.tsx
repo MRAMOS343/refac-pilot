@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,13 +150,8 @@ export default function InventarioPage() {
     };
   }, [inventory, getProductById]);
 
-  // Memoized columns
-  const inventoryColumns = useMemo(() => 
-    getInventoryColumns(handleEditProduct, getStockStatusBadge),
-    []
-  );
-
-  const getStockStatusBadge = (inv: InventoryWithProduct) => {
+  // Helper functions defined BEFORE useMemo to avoid initialization errors
+  const getStockStatusBadge = useCallback((inv: InventoryWithProduct) => {
     if (inv.onHand <= inv.product.reorderPoint) {
       return <Badge variant="destructive">Stock Bajo</Badge>;
     } else if (inv.onHand <= inv.product.safetyStock + inv.product.reorderPoint) {
@@ -164,12 +159,18 @@ export default function InventarioPage() {
     } else {
       return <Badge variant="success">Stock Alto</Badge>;
     }
-  };
+  }, []);
 
-  const handleEditProduct = (product: Product) => {
+  const handleEditProduct = useCallback((product: Product) => {
     setEditingProduct(product);
     setProductModalOpen(true);
-  };
+  }, []);
+
+  // Memoized columns with explicit dependencies
+  const inventoryColumns = useMemo(() => 
+    getInventoryColumns(handleEditProduct, getStockStatusBadge),
+    [handleEditProduct, getStockStatusBadge]
+  );
 
   const handleCreateProduct = () => {
     setEditingProduct(null);

@@ -31,6 +31,28 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  // Runtime validation in development mode
+  if (import.meta.env.DEV) {
+    if (!Array.isArray(mockProducts) || mockProducts.length === 0) {
+      console.warn('[DataContext] mockProducts está vacío o no es array');
+    }
+    if (!Array.isArray(mockSales) || mockSales.length === 0) {
+      console.warn('[DataContext] mockSales está vacío o no es array');
+    }
+    if (!Array.isArray(mockInventory) || mockInventory.length === 0) {
+      console.warn('[DataContext] mockInventory está vacío o no es array');
+    }
+    if (!Array.isArray(mockWarehouses) || mockWarehouses.length === 0) {
+      console.warn('[DataContext] mockWarehouses está vacío o no es array');
+    }
+    if (!Array.isArray(mockUsers) || mockUsers.length === 0) {
+      console.warn('[DataContext] mockUsers está vacío o no es array');
+    }
+    if (!Array.isArray(mockSuppliers) || mockSuppliers.length === 0) {
+      console.warn('[DataContext] mockSuppliers está vacío o no es array');
+    }
+  }
+
   const value: DataContextType = {
     products: mockProducts,
     sales: mockSales,

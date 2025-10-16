@@ -259,8 +259,12 @@ export default function ProveedoresPage() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={form.handleSubmit(onSubmit)}>
-                {editingSupplier ? "Actualizar" : "Crear"}
+              <Button 
+                onClick={form.handleSubmit(onSubmit)}
+                disabled={!form.formState.isValid || form.formState.isSubmitting}
+                aria-label={editingSupplier ? "Actualizar proveedor" : "Crear proveedor"}
+              >
+                {form.formState.isSubmitting ? "Guardando..." : editingSupplier ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>
           </DialogContent>

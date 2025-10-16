@@ -180,6 +180,14 @@ function DataTableComponent<T extends Record<string, any>>({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* Accessibility: Screen reader announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {loading 
+          ? `Cargando ${searchable ? 'resultados de búsqueda' : 'datos'}...` 
+          : `Mostrando ${datosProcesados.length} ${datosProcesados.length === 1 ? 'resultado' : 'resultados'}${totalPaginas > 1 ? `. Página ${paginaActual} de ${totalPaginas}` : ''}.`
+        }
+      </div>
+
       {/* Search and Controls */}
       {searchable && (
         <div className="flex items-center gap-2">

@@ -15,16 +15,23 @@ export const getVentasColumns = (getMetodoPagoBadge: (metodo: Sale['metodoPago']
   { 
     key: 'fechaISO', 
     header: 'Fecha',
-    render: (value: string) => (
-      <div>
-        <div className="font-medium">
-          {format(new Date(value), 'dd/MM/yyyy', { locale: es })}
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {format(new Date(value), 'HH:mm')}
-        </div>
-      </div>
-    )
+    render: (value: string) => {
+      if (!value) return <span className="text-muted-foreground">Sin fecha</span>;
+      try {
+        return (
+          <div>
+            <div className="font-medium">
+              {format(new Date(value), 'dd/MM/yyyy', { locale: es })}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {format(new Date(value), 'HH:mm')}
+            </div>
+          </div>
+        );
+      } catch (error) {
+        return <span className="text-destructive">Fecha inválida</span>;
+      }
+    }
   },
   { key: 'vendedor', header: 'Vendedor' },
   { 
@@ -35,17 +42,26 @@ export const getVentasColumns = (getMetodoPagoBadge: (metodo: Sale['metodoPago']
   { 
     key: 'subtotal', 
     header: 'Subtotal',
-    render: (value: number) => <span className="text-right block">${value.toFixed(2)}</span>
+    render: (value: number) => {
+      if (typeof value !== 'number' || isNaN(value)) return <span className="text-destructive">-</span>;
+      return <span className="text-right block">${value.toFixed(2)}</span>;
+    }
   },
   { 
     key: 'iva', 
     header: 'IVA',
-    render: (value: number) => <span className="text-right text-muted-foreground block">${value.toFixed(2)}</span>
+    render: (value: number) => {
+      if (typeof value !== 'number' || isNaN(value)) return <span className="text-destructive">-</span>;
+      return <span className="text-right text-muted-foreground block">${value.toFixed(2)}</span>;
+    }
   },
   { 
     key: 'total', 
     header: 'Total',
-    render: (value: number) => <span className="text-right font-medium block">${value.toFixed(2)}</span>
+    render: (value: number) => {
+      if (typeof value !== 'number' || isNaN(value)) return <span className="text-destructive">-</span>;
+      return <span className="text-right font-medium block">${value.toFixed(2)}</span>;
+    }
   },
   { 
     key: 'items', 

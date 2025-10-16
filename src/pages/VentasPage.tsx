@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,6 +36,9 @@ export default function VentasPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
   const { sales, getWarehouseById } = useData();
   const { getProductName } = useProductCache();
+  
+  // Memoize getProductName to prevent unnecessary re-renders
+  const getProductNameMemo = useCallback((id: string) => getProductName(id), [getProductName]);
   const [selectedMetodoPago, setSelectedMetodoPago] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('30d');
   const { isLoading } = useLoadingState({ minLoadingTime: 1000 });
@@ -82,7 +85,7 @@ export default function VentasPage() {
     
     const topProductId = Object.entries(productSales)
       .sort(([,a], [,b]) => b - a)[0]?.[0];
-    const topProductName = topProductId ? getProductName(topProductId).split(' - ')[0] : 'Sin datos';
+    const topProductName = topProductId ? getProductNameMemo(topProductId).split(' - ')[0] : 'Sin datos';
 
     return [
       {
@@ -106,7 +109,7 @@ export default function VentasPage() {
         changeType: 'positive'
       }
     ];
-  }, [filteredSales]);
+  }, [filteredSales, getProductNameMemo]);
 
   // Generate chart data
   const chartData: ChartDataPoint[] = useMemo(() => {
