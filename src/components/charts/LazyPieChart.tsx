@@ -9,13 +9,14 @@ const ResponsiveContainer = lazy(() => import('recharts').then(mod => ({ default
 
 interface LazyPieChartProps {
   children?: React.ReactNode;
+  height?: number;
   [key: string]: any;
 }
 
-export function LazyPieChart({ children, ...props }: LazyPieChartProps) {
+export function LazyPieChart({ children, height = 320, ...props }: LazyPieChartProps) {
   return (
     <Suspense fallback={<ChartSkeleton />}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={height}>
         <PieChart {...props}>
           {children}
         </PieChart>
