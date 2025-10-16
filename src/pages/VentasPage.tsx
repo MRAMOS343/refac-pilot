@@ -221,9 +221,7 @@ export default function VentasPage() {
           </>
         ) : (
           kpis.map((kpi, index) => (
-            <div key={index} className="animate-fade-in hover-lift">
-              <KPICard data={kpi} />
-            </div>
+            <KPICard key={index} data={kpi} className="animate-fade-in" />
           ))
         )}
       </div>
