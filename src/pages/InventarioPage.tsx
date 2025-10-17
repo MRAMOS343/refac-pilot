@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,19 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable, Columna } from '@/components/ui/data-table';
 import { ProductModal } from '@/components/modals/ProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X } from 'lucide-react';
-import { mockProducts, mockInventory, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
+import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X, Filter } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
+import { useDebounce } from '@/hooks/useDebounce';
+import { getInventoryColumns } from '@/config/tableColumns';
 import { Product, Inventory, User, KPIData } from '../types';
-import { toast } from '@/hooks/use-toast';
+import { exportToCSV } from '@/utils/exportCSV';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { KPISkeleton } from '@/components/ui/kpi-skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { showSuccessToast, showErrorToast } from '@/utils/toastHelpers';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ContextType {
   currentWarehouse: string;
@@ -26,28 +35,32 @@ interface InventoryWithProduct extends Inventory {
 
 export default function InventarioPage() {
   const { currentWarehouse, searchQuery, currentUser } = useOutletContext<ContextType>();
+  const { products, inventory, getProductById, getWarehouseById } = useData();
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedMarca, setSelectedMarca] = useState<string>('all');
   const [selectedCategoria, setSelectedCategoria] = useState<string>('all');
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const { isLoading } = useLoadingState({ minLoadingTime: 600 });
+  const isMobile = useIsMobile();
 
   // Get unique brands and categories for filters
-  const marcas = [...new Set(mockProducts.map(p => p.marca))];
-  const categorias = [...new Set(mockProducts.map(p => p.categoria))];
+  const marcas = useMemo(() => [...new Set(products.map(p => p.marca))], [products]);
+  const categorias = useMemo(() => [...new Set(products.map(p => p.categoria))], [products]);
 
   // Filter inventory data for current warehouse
   const warehouseInventory = useMemo(() => {
-    return mockInventory
-      .filter(inv => inv.warehouseId === currentWarehouse)
+    return inventory
+      .filter(inv => currentWarehouse === 'all' || inv.warehouseId === currentWarehouse)
       .map(inv => {
         const product = getProductById(inv.productId);
         return product ? { ...inv, product } : null;
       })
       .filter((item): item is InventoryWithProduct => item !== null)
       .filter(item => {
-        // Search filter
-        if (searchQuery) {
-          const searchLower = searchQuery.toLowerCase();
+        // Search filter with debounce
+        if (debouncedSearchQuery) {
+          const searchLower = debouncedSearchQuery.toLowerCase();
           if (!item.product.nombre.toLowerCase().includes(searchLower) && 
               !item.product.sku.toLowerCase().includes(searchLower) && 
               !item.product.marca.toLowerCase().includes(searchLower)) {
@@ -67,7 +80,7 @@ export default function InventarioPage() {
 
         return true;
       });
-  }, [currentWarehouse, searchQuery, selectedMarca, selectedCategoria]);
+  }, [inventory, currentWarehouse, debouncedSearchQuery, selectedMarca, selectedCategoria]);
 
   // Calculate KPIs for current warehouse
   const warehouseKPIs = useMemo((): KPIData[] => {
@@ -109,7 +122,7 @@ export default function InventarioPage() {
 
   // Calculate global totals across all warehouses
   const globalTotals = useMemo(() => {
-    const allInventory = mockInventory.map(inv => {
+    const allInventory = inventory.map(inv => {
       const product = getProductById(inv.productId);
       return product ? { ...inv, product } : null;
     }).filter((item): item is InventoryWithProduct => item !== null);
@@ -135,92 +148,29 @@ export default function InventarioPage() {
       totalItems,
       byWarehouse
     };
-  }, []);
+  }, [inventory, getProductById]);
 
-  // Define columns for the data table
-  const inventoryColumns: Columna<InventoryWithProduct>[] = [
-    {
-      key: 'product.sku',
-      header: 'SKU',
-      sortable: true,
-      render: (_, row) => (
-        <span className="font-mono text-sm">{row.product.sku}</span>
-      )
-    },
-    {
-      key: 'product.nombre',
-      header: 'Producto',
-      sortable: true,
-      render: (_, row) => (
-        <div>
-          <p className="font-medium">{row.product.nombre}</p>
-          <p className="text-sm text-muted-foreground">{row.product.marca}</p>
-        </div>
-      )
-    },
-    {
-      key: 'product.categoria',
-      header: 'Categoría',
-      sortable: true,
-      render: (_, row) => (
-        <Badge variant="outline">{row.product.categoria}</Badge>
-      )
-    },
-    {
-      key: 'onHand',
-      header: 'Stock',
-      sortable: true,
-      render: (_, row) => (
-        <div className="text-right">
-          <span className="font-medium">{row.onHand}</span>
-          <span className="text-sm text-muted-foreground ml-1">{row.product.unidad}</span>
-        </div>
-      )
-    },
-    {
-      key: 'product.precio',
-      header: 'Precio',
-      sortable: true,
-      render: (_, row) => (
-        <span className="font-medium">
-          {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(row.product.precio)}
-        </span>
-      )
-    },
-    {
-      key: 'status',
-      header: 'Estado',
-      render: (_, row) => getStockStatusBadge(row)
-    },
-    {
-      key: 'actions',
-      header: 'Acciones',
-      render: (_, row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleEditProduct(row.product)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      )
-    }
-  ];
-
-  const getStockStatusBadge = (inv: InventoryWithProduct) => {
+  // Helper functions defined BEFORE useMemo to avoid initialization errors
+  const getStockStatusBadge = useCallback((inv: InventoryWithProduct) => {
     if (inv.onHand <= inv.product.reorderPoint) {
       return <Badge variant="destructive">Stock Bajo</Badge>;
     } else if (inv.onHand <= inv.product.safetyStock + inv.product.reorderPoint) {
-      return <Badge variant="secondary">Stock Medio</Badge>;
+      return <Badge variant="warning">Stock Medio</Badge>;
     } else {
-      return <Badge className="bg-green-100 text-green-700">Stock Alto</Badge>;
+      return <Badge variant="success">Stock Alto</Badge>;
     }
-  };
+  }, []);
 
-  const handleEditProduct = (product: Product) => {
+  const handleEditProduct = useCallback((product: Product) => {
     setEditingProduct(product);
     setProductModalOpen(true);
-  };
+  }, []);
+
+  // Memoized columns with explicit dependencies
+  const inventoryColumns = useMemo(() => 
+    getInventoryColumns(handleEditProduct, getStockStatusBadge),
+    [handleEditProduct, getStockStatusBadge]
+  );
 
   const handleCreateProduct = () => {
     setEditingProduct(null);
@@ -232,48 +182,43 @@ export default function InventarioPage() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     if (editingProduct) {
-      toast({
-        title: "Producto actualizado",
-        description: `${productData.nombre} ha sido actualizado exitosamente.`,
-      });
+      showSuccessToast("Producto actualizado", `${productData.nombre} ha sido actualizado exitosamente.`);
     } else {
-      toast({
-        title: "Producto creado",
-        description: `${productData.nombre} ha sido creado exitosamente.`,
-      });
+      showSuccessToast("Producto creado", `${productData.nombre} ha sido creado exitosamente.`);
     }
   };
 
   const handleExportCSV = () => {
     if (currentUser.role === 'cajero') {
-      toast({
-        title: "Acceso denegado",
-        description: "No tienes permisos para exportar datos.",
-        variant: "destructive",
-      });
+      showErrorToast("Acceso denegado", "No tienes permisos para exportar datos.");
       return;
     }
     
-    toast({
-      title: "Exportando...",
-      description: "Los datos se están exportando a CSV.",
-    });
+    exportToCSV(
+      warehouseInventory.map(inv => ({
+        SKU: inv.product.sku,
+        Producto: inv.product.nombre,
+        Marca: inv.product.marca,
+        Categoria: inv.product.categoria,
+        Stock: inv.onHand,
+        Unidad: inv.product.unidad,
+        Precio: inv.product.precio,
+        Estado: inv.onHand <= inv.product.reorderPoint ? 'Stock Bajo' : 
+                inv.onHand <= inv.product.safetyStock + inv.product.reorderPoint ? 'Stock Medio' : 'Stock Alto'
+      })),
+      `inventario_${currentWarehouse === 'all' ? 'todas_sucursales' : currentWarehouse}_${new Date().toISOString().split('T')[0]}`
+    );
+    
+    showSuccessToast("Exportación exitosa", "Los datos se han exportado a CSV correctamente.");
   };
 
   const handleImportCSV = () => {
     if (currentUser.role === 'cajero') {
-      toast({
-        title: "Acceso denegado",
-        description: "No tienes permisos para importar datos.",
-        variant: "destructive",
-      });
+      showErrorToast("Acceso denegado", "No tienes permisos para importar datos.");
       return;
     }
     
-    toast({
-      title: "Función no disponible",
-      description: "La importación CSV estará disponible próximamente.",
-    });
+    showSuccessToast("Función no disponible", "La importación CSV estará disponible próximamente.");
   };
 
   const clearFilters = () => {
@@ -284,25 +229,28 @@ export default function InventarioPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Inventario</h1>
-          <p className="text-muted-foreground">
-            {getWarehouseById(currentWarehouse)?.nombre || 'Sucursal no encontrada'}
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Inventario</h1>
+          <p className="text-sm text-muted-foreground">
+            {currentWarehouse === 'all' 
+              ? 'Todas las Sucursales' 
+              : getWarehouseById(currentWarehouse)?.nombre || 'Sucursal no encontrada'
+            }
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
+        <div className="flex gap-2 self-end sm:self-auto flex-wrap">
+          <Button variant="outline" onClick={handleExportCSV} size="sm" className="btn-hover touch-target" aria-label="Exportar inventario a CSV">
+            <Download className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exportar CSV</span>
           </Button>
-          <Button variant="outline" onClick={handleImportCSV}>
-            <Upload className="w-4 h-4 mr-2" />
-            Importar CSV
+          <Button variant="outline" onClick={handleImportCSV} size="sm" className="btn-hover touch-target" aria-label="Importar inventario desde CSV">
+            <Upload className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Importar CSV</span>
           </Button>
-          <Button onClick={handleCreateProduct}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Producto
+          <Button onClick={handleCreateProduct} size="sm" className="btn-hover touch-target" aria-label="Crear nuevo producto">
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nuevo Producto</span>
           </Button>
         </div>
       </div>
@@ -316,87 +264,164 @@ export default function InventarioPage() {
         <TabsContent value="warehouse" className="space-y-6">
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {warehouseKPIs.map((kpi, index) => (
-              <KPICard key={index} data={kpi} />
-            ))}
+            {isLoading ? (
+              <>
+                <KPISkeleton />
+                <KPISkeleton />
+                <KPISkeleton />
+                <KPISkeleton />
+              </>
+            ) : (
+              warehouseKPIs.map((kpi, index) => (
+                <KPICard key={index} data={kpi} className="animate-fade-in card-hover" />
+              ))
+            )}
           </div>
 
           {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filtros</CardTitle>
-              <CardDescription>
-                Filtra los productos por marca y categoría
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Marca</label>
-                  <Select value={selectedMarca} onValueChange={setSelectedMarca}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas las marcas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las marcas</SelectItem>
-                      {marcas.map((marca) => (
-                        <SelectItem key={marca} value={marca}>
-                          {marca}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {isMobile ? (
+            <Accordion type="single" collapsible defaultValue="filtros">
+              <AccordionItem value="filtros">
+                <AccordionTrigger className="px-4">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    <span>Filtros</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-base font-medium">Marca</label>
+                      <Select value={selectedMarca} onValueChange={setSelectedMarca}>
+                        <SelectTrigger className="mobile-select">
+                          <SelectValue placeholder="Todas las marcas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas las marcas</SelectItem>
+                          {marcas.map((marca) => (
+                            <SelectItem key={marca} value={marca}>
+                              {marca}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Categoría</label>
-                  <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas las categorías" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las categorías</SelectItem>
-                      {categorias.map((categoria) => (
-                        <SelectItem key={categoria} value={categoria}>
-                          {categoria}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-base font-medium">Categoría</label>
+                      <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+                        <SelectTrigger className="mobile-select">
+                          <SelectValue placeholder="Todas las categorías" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas las categorías</SelectItem>
+                          {categorias.map((categoria) => (
+                            <SelectItem key={categoria} value={categoria}>
+                              {categoria}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="flex items-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={clearFilters}
-                    className="w-full"
-                    disabled={selectedMarca === 'all' && selectedCategoria === 'all'}
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Limpiar Filtros
-                  </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={clearFilters}
+                      className="w-full mobile-button"
+                      disabled={selectedMarca === 'all' && selectedCategoria === 'all'}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Limpiar Filtros
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Filtros</CardTitle>
+                <CardDescription>
+                  Filtra los productos por marca y categoría
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Marca</label>
+                    <Select value={selectedMarca} onValueChange={setSelectedMarca}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas las marcas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las marcas</SelectItem>
+                        {marcas.map((marca) => (
+                          <SelectItem key={marca} value={marca}>
+                            {marca}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Categoría</label>
+                    <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas las categorías" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las categorías</SelectItem>
+                        {categorias.map((categoria) => (
+                          <SelectItem key={categoria} value={categoria}>
+                            {categoria}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={clearFilters}
+                      className="w-full"
+                      disabled={selectedMarca === 'all' && selectedCategoria === 'all'}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Limpiar Filtros
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Inventory Table */}
-          <Card>
+          <Card className="card-hover animate-fade-in">
             <CardHeader>
               <CardTitle>Productos en Inventario</CardTitle>
               <CardDescription>
-                {warehouseInventory.length} productos en {getWarehouseById(currentWarehouse)?.nombre}
+                {warehouseInventory.length} productos en {
+                  currentWarehouse === 'all' 
+                    ? 'todas las sucursales' 
+                    : getWarehouseById(currentWarehouse)?.nombre
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DataTable
-                data={warehouseInventory}
-                columns={inventoryColumns}
-                searchable={true}
-                searchPlaceholder="Buscar por nombre, SKU o marca..."
-                emptyMessage="No hay productos en inventario"
-                emptyDescription="No se encontraron productos que coincidan con los filtros aplicados"
-              />
+              {isLoading ? (
+                <TableSkeleton rows={5} columns={7} />
+              ) : (
+                <DataTable
+                  data={warehouseInventory}
+                  columns={inventoryColumns}
+                  searchable={true}
+                  searchPlaceholder="Buscar por nombre, SKU o marca..."
+                  emptyMessage="No hay productos en inventario"
+                  emptyDescription="No se encontraron productos que coincidan con los filtros aplicados"
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
