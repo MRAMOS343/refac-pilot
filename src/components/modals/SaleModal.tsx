@@ -1,12 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useDebounce } from "@/hooks/useDebounce";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { safeParseInt, safeParseFloat, validateInRange, validateInteger, validateNonEmptyArray } from "@/utils/validation";
-import { getProductByIdSafe } from "@/utils/safeData";
-import { logger } from "@/utils/logger";
-import { LIMITS } from "@/constants/limits";
+import * as z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-} from "@/components/ui/drawer";
 import {
   Form,
   FormControl,
@@ -50,37 +37,47 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useData } from "@/contexts/DataContext";
-import { useProductCache } from "@/hooks/useProductCache";
+import { mockProducts } from "@/data/mockData";
 import { Product, SaleItem } from "@/types";
 import { Trash2, Plus, Search } from "lucide-react";
-import { saleSchema, SaleFormData } from "@/schemas";
-import { METODOS_PAGO, IVA_PREDETERMINADO } from "@/constants";
-import { formatCurrency } from "@/utils/formatters";
+
+// Esquema de validación para cada producto en la venta
+const esquemaProductoVenta = z.object({
+  productId: z.string().min(1, "Producto es requerido"),
+  qty: z.number().min(1, "La cantidad debe ser mayor a 0"),
+  unitPrice: z.number().min(0.01, "El precio debe ser mayor a 0"),
+  discount: z.number().min(0, "El descuento no puede ser negativo").max(100, "El descuento no puede ser mayor a 100%").optional(),
+});
+
+// Esquema principal de validación para la venta completa
+const esquemaVenta = z.object({
+  metodoPago: z.enum(['efectivo', 'tarjeta', 'transferencia', 'credito'], {
+    required_error: "Método de pago es requerido",
+  }),
+  cliente: z.string().max(100, "Nombre del cliente debe tener máximo 100 caracteres").optional(),
+  items: z.array(esquemaProductoVenta).min(1, "Debe agregar al menos un producto"),
+});
+
+type DatosFormularioVenta = z.infer<typeof esquemaVenta>;
 
 interface SaleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   warehouseId: string;
-  onSave: (sale: SaleFormData) => void;
+  onSave: (sale: DatosFormularioVenta) => void;
 }
 
 export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModalProps) {
   const { toast } = useToast();
-  const isMobile = useIsMobile();
-  const { products } = useData();
-  const { getProductName, getProductById: getProductByIdCached } = useProductCache();
   const [enviandoFormulario, setEnviandoFormulario] = useState(false);
   const [productos, setProductos] = useState<SaleItem[]>([]);
   const [productoSeleccionadoId, setProductoSeleccionadoId] = useState("");
   const [cantidad, setCantidad] = useState(1);
   const [busquedaProducto, setBusquedaProducto] = useState("");
-  const busquedaDebounced = useDebounce(busquedaProducto, 300);
-  const isMountedRef = useRef(true);
 
   // Configuración del formulario con validación
-  const formulario = useForm<SaleFormData>({
-    resolver: zodResolver(saleSchema),
+  const formulario = useForm<DatosFormularioVenta>({
+    resolver: zodResolver(esquemaVenta),
     defaultValues: {
       metodoPago: 'efectivo',
       cliente: "",
@@ -88,18 +85,14 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     },
   });
 
-  // Filtrar productos basado en la búsqueda con debounce
+  // Filtrar productos basado en la búsqueda
   const productosFiltrados = useMemo(() => {
-    if (!busquedaDebounced.trim()) {
-      return products.slice(0, 10); // Limit initial results
-    }
-    const busquedaLower = busquedaDebounced.toLowerCase();
-    return products.filter(producto =>
-      producto.nombre.toLowerCase().includes(busquedaLower) ||
-      producto.sku.toLowerCase().includes(busquedaLower) ||
-      producto.marca.toLowerCase().includes(busquedaLower)
+    return mockProducts.filter(producto =>
+      producto.nombre.toLowerCase().includes(busquedaProducto.toLowerCase()) ||
+      producto.sku.toLowerCase().includes(busquedaProducto.toLowerCase()) ||
+      producto.marca.toLowerCase().includes(busquedaProducto.toLowerCase())
     );
-  }, [busquedaDebounced, products]);
+  }, [busquedaProducto]);
 
   // Calcular totales de la venta
   const totales = useMemo(() => {
@@ -109,7 +102,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       return suma + (totalProducto - (totalProducto * descuento / 100));
     }, 0);
     
-    const iva = subtotal * (IVA_PREDETERMINADO / 100);
+    const iva = subtotal * 0.16; // 16% IVA
     const total = subtotal + iva;
 
     return { subtotal, iva, total };
@@ -131,51 +124,17 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   }, [open, formulario]);
 
   const agregarProducto = () => {
-    if (!productoSeleccionadoId) {
+    if (!productoSeleccionadoId || cantidad <= 0) {
       toast({
         title: "Error",
-        description: "Debe seleccionar un producto.",
+        description: "Debe seleccionar un producto y cantidad válida.",
         variant: "destructive",
       });
       return;
     }
 
-    // Usar validación robusta con límites constantes
-    const validacionCantidad = validateInRange(
-      cantidad, 
-      LIMITS.SALE.QUANTITY_MIN, 
-      LIMITS.SALE.QUANTITY_MAX, 
-      "Cantidad"
-    );
-    if (!validacionCantidad.valid) {
-      toast({
-        title: "Error",
-        description: validacionCantidad.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const validacionEntero = validateInteger(cantidad, "Cantidad");
-    if (!validacionEntero.valid) {
-      toast({
-        title: "Error",
-        description: validacionEntero.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Obtener producto de forma segura
-    const producto = getProductByIdCached(productoSeleccionadoId);
-    if (!producto) {
-      toast({
-        title: "Error",
-        description: "El producto seleccionado no es válido.",
-        variant: "destructive",
-      });
-      return;
-    }
+    const producto = mockProducts.find(p => p.id === productoSeleccionadoId);
+    if (!producto) return;
 
     // Verificar si el producto ya existe en la lista
     const indiceProductoExistente = productos.findIndex(item => item.productId === productoSeleccionadoId);
@@ -196,12 +155,6 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
       setProductos([...productos, nuevoProducto]);
     }
 
-    logger.info('Producto agregado a la venta', {
-      productId: productoSeleccionadoId,
-      cantidad,
-      producto: producto.nombre
-    });
-
     setProductoSeleccionadoId("");
     setCantidad(1);
     setBusquedaProducto("");
@@ -212,7 +165,7 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
   };
 
   const actualizarCantidadProducto = (indice: number, qty: number) => {
-    if (qty <= 0 || qty > 9999 || !Number.isInteger(qty)) return;
+    if (qty <= 0) return;
     const productosActualizados = [...productos];
     productosActualizados[indice].qty = qty;
     setProductos(productosActualizados);
@@ -225,71 +178,56 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
     setProductos(productosActualizados);
   };
 
-  const enviarFormulario = async (datos: SaleFormData) => {
-    const validacionItems = validateNonEmptyArray(productos, "Productos");
-    if (!validacionItems.valid) {
+  const enviarFormulario = async (datos: DatosFormularioVenta) => {
+    if (productos.length === 0) {
       toast({
         title: "Error",
-        description: validacionItems.error,
+        description: "Debe agregar al menos un producto a la venta.",
         variant: "destructive",
       });
       return;
     }
 
     setEnviandoFormulario(true);
-
     try {
       const datosVenta = {
         ...datos,
         items: productos,
       };
-      
-      logger.info('Iniciando registro de venta', { total: totales.total });
-      
       await onSave(datosVenta);
-      
-      if (!isMountedRef.current) {
-        logger.warn('Componente desmontado antes de completar venta');
-        return;
-      }
-      
       toast({
         title: "Venta registrada",
-        description: `Venta por ${formatCurrency(totales.total)} registrada exitosamente.`,
+        description: `Venta por ${new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totales.total)} registrada exitosamente.`,
       });
-      
-      logger.info('Venta registrada exitosamente', { total: totales.total });
       onOpenChange(false);
     } catch (error) {
-      if (!isMountedRef.current) return;
-      
-      logger.error('Error al registrar venta:', error);
       toast({
         title: "Error",
         description: "Ha ocurrido un error al registrar la venta.",
         variant: "destructive",
       });
     } finally {
-      if (isMountedRef.current) {
-        setEnviandoFormulario(false);
-      }
+      setEnviandoFormulario(false);
     }
   };
 
-  // Use cached product name function from hook
+  const getProductName = (productId: string) => {
+    const product = mockProducts.find(p => p.id === productId);
+    return product ? `${product.nombre} - ${product.marca}` : "Producto no encontrado";
+  };
 
-  // Cleanup al desmontar componente y configurar isMountedRef
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      logger.debug('SaleModal desmontado, cancelando operaciones pendientes');
-    };
-  }, []);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Nueva Venta</DialogTitle>
+          <DialogDescription>
+            Registra una nueva venta agregando productos y especificando el método de pago.
+          </DialogDescription>
+        </DialogHeader>
 
-  const FormContent = () => (
-    <Form {...formulario}>
-      <form onSubmit={formulario.handleSubmit(enviarFormulario)} className="space-y-6">
+        <Form {...formulario}>
+          <form onSubmit={formulario.handleSubmit(enviarFormulario)} className="space-y-6">
             {/* Detalles de la venta */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -305,11 +243,10 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {METODOS_PAGO.map((metodo) => (
-                          <SelectItem key={metodo} value={metodo}>
-                            {metodo.charAt(0).toUpperCase() + metodo.slice(1)}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                        <SelectItem value="credito">Crédito</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -346,7 +283,6 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                       value={busquedaProducto}
                       onChange={(e) => setBusquedaProducto(e.target.value)}
                       className="pl-8"
-                      autoFocus
                     />
                   </div>
                   {busquedaProducto && (
@@ -378,13 +314,10 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                   <label className="text-sm font-medium mb-2 block">Cantidad</label>
                   <Input
                     type="number"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
                     min="1"
                     value={cantidad}
-                    onChange={(e) => setCantidad(safeParseInt(e.target.value, 1))}
+                    onChange={(e) => setCantidad(parseInt(e.target.value) || 1)}
                     placeholder="1"
-                    className={isMobile ? "mobile-input" : ""}
                   />
                 </div>
 
@@ -425,11 +358,9 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                           <TableCell>
                             <Input
                               type="number"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
                               min="1"
                               value={producto.qty}
-                              onChange={(e) => actualizarCantidadProducto(indice, safeParseInt(e.target.value, 1))}
+                              onChange={(e) => actualizarCantidadProducto(indice, parseInt(e.target.value) || 1)}
                               className="w-20"
                             />
                           </TableCell>
@@ -441,11 +372,10 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                           <TableCell>
                             <Input
                               type="number"
-                              inputMode="decimal"
                               min="0"
                               max="100"
                               value={producto.discount || 0}
-                              onChange={(e) => actualizarDescuentoProducto(indice, safeParseFloat(e.target.value, 0))}
+                              onChange={(e) => actualizarDescuentoProducto(indice, parseFloat(e.target.value) || 0)}
                               className="w-20"
                             />
                           </TableCell>
@@ -460,7 +390,6 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
                               variant="ghost"
                               size="sm"
                               onClick={() => eliminarProducto(indice)}
-                              aria-label="Eliminar producto"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -493,64 +422,21 @@ export function SaleModal({ open, onOpenChange, warehouseId, onSave }: SaleModal
               </div>
             )}
 
-            {isMobile ? (
-              <DrawerFooter>
-                <Button type="submit" disabled={enviandoFormulario || productos.length === 0} className="mobile-button">
-                  {enviandoFormulario ? "Registrando..." : "Registrar Venta"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)}
-                  disabled={enviandoFormulario}
-                  className="mobile-button"
-                >
-                  Cancelar
-                </Button>
-              </DrawerFooter>
-            ) : (
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)}
-                  disabled={enviandoFormulario}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={enviandoFormulario || productos.length === 0}>
-                  {enviandoFormulario ? "Registrando..." : "Registrar Venta"}
-                </Button>
-              </DialogFooter>
-            )}
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                disabled={enviandoFormulario}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={enviandoFormulario || productos.length === 0}>
+                {enviandoFormulario ? "Registrando..." : "Registrar Venta"}
+              </Button>
+            </DialogFooter>
           </form>
         </Form>
-  );
-
-  return isMobile ? (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[95vh]">
-        <DrawerHeader>
-          <DrawerTitle>Nueva Venta</DrawerTitle>
-          <DrawerDescription>
-            Registra una nueva venta agregando productos y especificando el método de pago.
-          </DrawerDescription>
-        </DrawerHeader>
-        <div className="overflow-y-auto px-4">
-          <FormContent />
-        </div>
-      </DrawerContent>
-    </Drawer>
-  ) : (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Nueva Venta</DialogTitle>
-          <DialogDescription>
-            Registra una nueva venta agregando productos y especificando el método de pago.
-          </DialogDescription>
-        </DialogHeader>
-        <FormContent />
       </DialogContent>
     </Dialog>
   );

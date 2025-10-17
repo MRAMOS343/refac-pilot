@@ -5,14 +5,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp, AlertTriangle, BarChart3, Calendar } from 'lucide-react';
-import { LazyLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from '@/components/charts/LazyLineChart';
-import { useData } from '@/contexts/DataContext';
+import { mockProducts, mockWarehouses, getProductById, getWarehouseById } from '../data/mockData';
 import { User, ChartDataPoint, ForecastData } from '../types';
 import { addWeeks, format, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useLoadingState } from '@/hooks/useLoadingState';
-import { ChartSkeleton } from '@/components/ui/chart-skeleton';
 
 interface ContextType {
   currentWarehouse: string;
@@ -21,11 +19,9 @@ interface ContextType {
 
 export default function PrediccionPage() {
   const { currentWarehouse, currentUser } = useOutletContext<ContextType>();
-  const { products, warehouses, getProductById, getWarehouseById } = useData();
-  const [selectedProduct, setSelectedProduct] = useState<string>(products[0]?.id || '');
+  const [selectedProduct, setSelectedProduct] = useState<string>(mockProducts[0]?.id || '');
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(currentWarehouse);
   const [horizon, setHorizon] = useState<string>('8');
-  const { isLoading } = useLoadingState({ minLoadingTime: 800 });
 
   // Generate mock forecast data
   const forecastData: ForecastData = useMemo(() => {
@@ -134,8 +130,7 @@ export default function PrediccionPage() {
   const selectedWarehouseData = getWarehouseById(selectedWarehouse);
 
   return (
-    <main role="main" aria-label="Contenido principal">
-      <div className="space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -176,7 +171,7 @@ export default function PrediccionPage() {
                   <SelectValue placeholder="Seleccionar producto" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map(product => (
+                  {mockProducts.map(product => (
                     <SelectItem key={product.id} value={product.id}>
                       {product.sku} - {product.nombre}
                     </SelectItem>
@@ -192,7 +187,7 @@ export default function PrediccionPage() {
                   <SelectValue placeholder="Seleccionar sucursal" />
                 </SelectTrigger>
                 <SelectContent>
-                  {warehouses.map(warehouse => (
+                  {mockWarehouses.map(warehouse => (
                     <SelectItem key={warehouse.id} value={warehouse.id}>
                       {warehouse.nombre}
                     </SelectItem>
@@ -220,7 +215,7 @@ export default function PrediccionPage() {
 
       {/* Selected Item Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="card-hover animate-fade-in">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg">Producto Seleccionado</CardTitle>
           </CardHeader>
@@ -252,7 +247,7 @@ export default function PrediccionPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-hover animate-fade-in">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg">Métricas del Modelo</CardTitle>
           </CardHeader>
@@ -284,76 +279,92 @@ export default function PrediccionPage() {
       </div>
 
       {/* Forecast Chart */}
-      {isLoading ? (
-        <ChartSkeleton />
-      ) : (
-        <Card className="chart-card card-hover animate-fade-in">
-          <CardHeader>
-            <CardTitle>Pronóstico de Demanda</CardTitle>
-            <CardDescription>
-              Histórico (azul) vs Pronóstico (rojo) con bandas de confianza (área sombreada)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LazyLineChart data={chartData} height={384}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis 
-                dataKey="label" 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                label={{ value: 'Unidades', angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px'
-                }}
-              />
-              <Line 
-                type="monotone"
-                dataKey="value" 
-                stroke="hsl(var(--primary))" 
-                name="Histórico" 
-                strokeWidth={2} 
-                dot={{ fill: 'hsl(var(--primary))', r: 3 }}
-              />
-              <Line 
-                type="monotone"
-                dataKey="forecast" 
-                stroke="hsl(var(--destructive))" 
-                name="Pronóstico" 
-                strokeWidth={2} 
-                strokeDasharray="5 5"
-                dot={{ fill: 'hsl(var(--destructive))', r: 3 }}
-              />
-              <Line 
-                type="monotone"
-                dataKey="upperBound" 
-                stroke="hsl(var(--muted-foreground))" 
-                name="Límite Superior" 
-                strokeDasharray="2 2"
-                dot={false}
-                strokeWidth={1}
-              />
-              <Line 
-                type="monotone"
-                dataKey="lowerBound" 
-                stroke="hsl(var(--muted-foreground))" 
-                name="Límite Inferior" 
-                strokeDasharray="2 2"
-                dot={false}
-                strokeWidth={1}
-              />
-            </LazyLineChart>
-          </CardContent>
+      <Card className="chart-card">
+        <CardHeader>
+          <CardTitle>Pronóstico de Demanda</CardTitle>
+          <CardDescription>
+            Histórico (azul) vs Pronóstico (rojo) con bandas de confianza (área sombreada)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-96">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="label" 
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Unidades', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    const formatValue = value?.toFixed(2) || '0';
+                    const names = {
+                      value: 'Histórico',
+                      forecast: 'Pronóstico',
+                      upperBound: 'Límite Superior',
+                      lowerBound: 'Límite Inferior'
+                    };
+                    return [formatValue, names[name as keyof typeof names] || name];
+                  }}
+                  labelFormatter={(label) => `Semana: ${label}`}
+                />
+                
+                {/* Reference line to separate historical from forecast */}
+                <ReferenceLine 
+                  x={chartData[forecastData.historical.length - 1]?.label} 
+                  stroke="hsl(var(--muted-foreground))" 
+                  strokeDasharray="5 5"
+                />
+                
+                {/* Historical data */}
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
+                  connectNulls={false}
+                />
+                
+                {/* Forecast data */}
+                <Line 
+                  type="monotone" 
+                  dataKey="forecast" 
+                  stroke="hsl(var(--destructive))" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={{ fill: 'hsl(var(--destructive))', strokeWidth: 0, r: 3 }}
+                  connectNulls={false}
+                />
+                
+                {/* Confidence bands */}
+                <Line 
+                  type="monotone" 
+                  dataKey="upperBound" 
+                  stroke="hsl(var(--muted-foreground))" 
+                  strokeWidth={1}
+                  strokeDasharray="2 2"
+                  dot={false}
+                  connectNulls={false}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="lowerBound" 
+                  stroke="hsl(var(--muted-foreground))" 
+                  strokeWidth={1}
+                  strokeDasharray="2 2"
+                  dot={false}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
       </Card>
-      )}
-      </div>
-    </main>
+    </div>
   );
 }

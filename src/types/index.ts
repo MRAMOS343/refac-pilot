@@ -95,28 +95,6 @@ export interface PurchaseSuggestion {
   costo?: number;
 }
 
-export interface Team {
-  id: string;
-  nombre: string;
-  descripcion?: string;
-  lider?: string;
-  miembros: string[];
-  warehouseId?: string;
-  fechaCreacion: string;
-}
-
-export interface Supplier {
-  id: string;
-  nombre: string;
-  contacto: string;
-  telefono: string;
-  email: string;
-  direccion?: string;
-  rfc?: string;
-  categorias: string[];
-  activo: boolean;
-}
-
 export interface FilterState {
   search: string;
   marca: string;
@@ -125,41 +103,6 @@ export interface FilterState {
   dateFrom?: string;
   dateTo?: string;
   metodoPago?: string;
-}
-
-export type TicketStatus = 'abierto' | 'en_progreso' | 'resuelto' | 'cerrado';
-export type TicketPriority = 'baja' | 'media' | 'alta' | 'urgente';
-export type TicketCategory = 'bug' | 'consulta' | 'sugerencia' | 'soporte' | 'reporte';
-
-export interface Ticket {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  categoria: TicketCategory;
-  prioridad: TicketPriority;
-  estado: TicketStatus;
-  userId: string;
-  usuarioNombre: string;
-  asignadoA?: string;
-  archivosAdjuntos?: string[];
-  metadata?: {
-    navegador?: string;
-    dispositivo?: string;
-    url?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  resueltoAt?: string;
-}
-
-export interface TicketComment {
-  id: string;
-  ticketId: string;
-  userId: string;
-  usuarioNombre: string;
-  contenido: string;
-  esRespuestaOficial: boolean;
-  createdAt: string;
 }
 
 export interface AppState {
