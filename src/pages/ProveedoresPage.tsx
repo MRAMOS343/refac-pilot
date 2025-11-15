@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, ShoppingCart, TrendingDown, RotateCcw, DollarSign, Upload, FileText, Plus } from "lucide-react";
+import { ShoppingCart, TrendingDown, RotateCcw, DollarSign, Upload, FileText, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,13 +73,6 @@ export default function ProveedoresPage() {
     }
   ]);
 
-  const inventoryData = [
-    { sku: "CM-001", articulo: "Cilindro Maestro", linea: "Frenos", marca: "Bosch", existencia: 18, min: 10, max: 35, costo: 540, precio: 899, rotacion: "A" },
-    { sku: "AC-210", articulo: "Aceite 5W30 1L", linea: "Lubricantes", marca: "Mobil", existencia: 72, min: 40, max: 120, costo: 95, precio: 169, rotacion: "A" },
-    { sku: "LS-512", articulo: "Limpiaparabrisas 21\"", linea: "Accesorios", marca: "Trico", existencia: 9, min: 15, max: 60, costo: 48, precio: 99, rotacion: "B" },
-    { sku: "PB-404", articulo: "Pastillas de freno", linea: "Frenos", marca: "Brembo", existencia: 4, min: 12, max: 40, costo: 780, precio: 1249, rotacion: "A" },
-    { sku: "FS-331", articulo: "Filtro de aceite", linea: "Filtros", marca: "Mann", existencia: 3, min: 8, max: 30, costo: 110, precio: 199, rotacion: "B" }
-  ];
 
   const purchaseOrders = [
     { folio: "PO-8791", fecha: "2025-10-22", sucursal: "MonCar Pachuca", proveedor: "RefaExpress", items: 42, montoETA: "$38,210 2 días", estado: "en-transito" },
@@ -235,56 +228,13 @@ export default function ProveedoresPage() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="inventario">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="inventario"><Package className="h-4 w-4 mr-2" />Inventario</TabsTrigger>
+      <Tabs defaultValue="ordenes">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="ordenes"><ShoppingCart className="h-4 w-4 mr-2" />Órdenes</TabsTrigger>
           <TabsTrigger value="backorder"><TrendingDown className="h-4 w-4 mr-2" />Backorder</TabsTrigger>
           <TabsTrigger value="devoluciones"><RotateCcw className="h-4 w-4 mr-2" />Devoluciones</TabsTrigger>
           <TabsTrigger value="pagos"><DollarSign className="h-4 w-4 mr-2" />Pagos</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="inventario" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Inventario por SKU</h2>
-            <div className="flex gap-2">
-              <Badge variant="outline">Bajo mínimo: 2</Badge>
-              <Badge variant="outline">Sobrante: 1</Badge>
-            </div>
-          </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Artículo</TableHead>
-                  <TableHead>Línea</TableHead>
-                  <TableHead>Marca</TableHead>
-                  <TableHead>Existencia</TableHead>
-                  <TableHead>Mín/Máx</TableHead>
-                  <TableHead>Costo</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Rotación</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inventoryData.map(i => (
-                  <TableRow key={i.sku}>
-                    <TableCell className="font-medium">{i.sku}</TableCell>
-                    <TableCell>{i.articulo}</TableCell>
-                    <TableCell>{i.linea}</TableCell>
-                    <TableCell>{i.marca}</TableCell>
-                    <TableCell>{i.existencia}</TableCell>
-                    <TableCell>{i.min}/{i.max}</TableCell>
-                    <TableCell>{formatCurrency(i.costo)}</TableCell>
-                    <TableCell>{formatCurrency(i.precio)}</TableCell>
-                    <TableCell><Badge variant={i.rotacion === 'A' ? 'default' : 'secondary'}>{i.rotacion}</Badge></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="ordenes" className="space-y-4">
           <h2 className="text-2xl font-bold">Órdenes de compra</h2>
