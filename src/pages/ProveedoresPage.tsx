@@ -149,8 +149,14 @@ export default function ProveedoresPage() {
     } else {
       const newSupplier: Supplier = {
         id: String(suppliers.length + 1),
-        ...sanitizedData,
-        categorias: categoriasArray
+        nombre: sanitizedData.nombre,
+        contacto: sanitizedData.contacto,
+        telefono: sanitizedData.telefono,
+        email: sanitizedData.email,
+        direccion: sanitizedData.direccion,
+        rfc: sanitizedData.rfc,
+        categorias: categoriasArray,
+        activo: sanitizedData.activo
       };
       setSuppliers([...suppliers, newSupplier]);
       toast.success("Proveedor creado");
