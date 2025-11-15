@@ -161,71 +161,11 @@ export default function ProveedoresPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Operación – Refaccionarias</h1>
-          <p className="text-muted-foreground">
-            Monitoreo de inventario, pedidos, backorders, devoluciones y pagos a proveedores.
-          </p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo proveedor
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingSupplier ? "Editar" : "Nuevo"} Proveedor</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Nombre *</Label>
-                  <Input {...form.register("nombre")} />
-                  {form.formState.errors.nombre && (
-                    <p className="text-sm text-destructive">{form.formState.errors.nombre.message}</p>
-                  )}
-                </div>
-                <div>
-                  <Label>Contacto *</Label>
-                  <Input {...form.register("contacto")} />
-                </div>
-                <div>
-                  <Label>Teléfono *</Label>
-                  <Input {...form.register("telefono")} />
-                </div>
-                <div>
-                  <Label>Email *</Label>
-                  <Input {...form.register("email")} type="email" />
-                </div>
-              </div>
-              <div>
-                <Label>Dirección</Label>
-                <Textarea {...form.register("direccion")} />
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label>RFC</Label>
-                  <Input {...form.register("rfc")} />
-                </div>
-                <div>
-                  <Label>Categorías *</Label>
-                  <Input {...form.register("categorias")} placeholder="Frenos, Filtros..." />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={form.watch("activo")} onCheckedChange={(v) => form.setValue("activo", v)} />
-                <Label>Activo</Label>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit">{editingSupplier ? "Actualizar" : "Crear"}</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+      <div>
+        <h1 className="text-3xl font-bold">Operación – Refaccionarias</h1>
+        <p className="text-muted-foreground">
+          Monitoreo de inventario, pedidos, backorders, devoluciones y pagos a proveedores.
+        </p>
       </div>
 
       <Tabs defaultValue="ordenes">
