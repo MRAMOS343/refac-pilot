@@ -8,8 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { DataTable, Columna } from '@/components/ui/data-table';
 import { ProductModal } from '@/components/modals/ProductModal';
+import { ProductCardGrid } from '@/components/inventory/ProductCardGrid';
+import { ProductDetailModal } from '@/components/inventory/ProductDetailModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X, Filter } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Download, Upload, AlertTriangle, Package, TrendingDown, Plus, Edit, X, Filter, LayoutGrid, List } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getInventoryColumns } from '@/config/tableColumns';
@@ -33,6 +36,8 @@ interface InventoryWithProduct extends Inventory {
   product: Product;
 }
 
+type ViewMode = 'table' | 'grid';
+
 export default function InventarioPage() {
   const { currentWarehouse, searchQuery, currentUser } = useOutletContext<ContextType>();
   const { products, inventory, getProductById, getWarehouseById } = useData();
@@ -41,6 +46,9 @@ export default function InventarioPage() {
   const [selectedCategoria, setSelectedCategoria] = useState<string>('all');
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryWithProduct | null>(null);
   const { isLoading } = useLoadingState({ minLoadingTime: 600 });
   const isMobile = useIsMobile();
 
@@ -226,6 +234,11 @@ export default function InventarioPage() {
     setSelectedCategoria('all');
   };
 
+  const handleProductCardClick = (item: InventoryWithProduct) => {
+    setSelectedInventoryItem(item);
+    setDetailModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -397,22 +410,39 @@ export default function InventarioPage() {
             </Card>
           )}
 
-          {/* Inventory Table */}
+          {/* Inventory Table/Grid */}
           <Card className="card-hover animate-fade-in">
             <CardHeader>
-              <CardTitle>Productos en Inventario</CardTitle>
-              <CardDescription>
-                {warehouseInventory.length} productos en {
-                  currentWarehouse === 'all' 
-                    ? 'todas las sucursales' 
-                    : getWarehouseById(currentWarehouse)?.nombre
-                }
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Productos en Inventario</CardTitle>
+                  <CardDescription>
+                    {warehouseInventory.length} productos en {
+                      currentWarehouse === 'all' 
+                        ? 'todas las sucursales' 
+                        : getWarehouseById(currentWarehouse)?.nombre
+                    }
+                  </CardDescription>
+                </div>
+                <ToggleGroup 
+                  type="single" 
+                  value={viewMode} 
+                  onValueChange={(value) => value && setViewMode(value as ViewMode)}
+                  className="bg-muted rounded-lg p-1"
+                >
+                  <ToggleGroupItem value="table" aria-label="Vista de tabla" className="data-[state=on]:bg-background">
+                    <List className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="grid" aria-label="Vista de cuadrícula" className="data-[state=on]:bg-background">
+                    <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <TableSkeleton rows={5} columns={7} />
-              ) : (
+              ) : viewMode === 'table' ? (
                 <DataTable
                   data={warehouseInventory}
                   columns={inventoryColumns}
@@ -420,6 +450,11 @@ export default function InventarioPage() {
                   searchPlaceholder="Buscar por nombre, SKU o marca..."
                   emptyMessage="No hay productos en inventario"
                   emptyDescription="No se encontraron productos que coincidan con los filtros aplicados"
+                />
+              ) : (
+                <ProductCardGrid 
+                  items={warehouseInventory} 
+                  onProductClick={handleProductCardClick} 
                 />
               )}
             </CardContent>
@@ -511,6 +546,13 @@ export default function InventarioPage() {
         onOpenChange={setProductModalOpen}
         product={editingProduct}
         onSave={handleSaveProduct}
+      />
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        item={selectedInventoryItem}
       />
     </div>
   );
