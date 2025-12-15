@@ -82,7 +82,7 @@ export function LoginForm({
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <p className="text-xs text-muted-foreground text-center">
-            Sistema de Gestión Moncar - v4.5
+            Sistema de Gestión Moncar - v5.3
           </p>
         </CardFooter>
       </Card>
